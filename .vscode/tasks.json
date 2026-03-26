@@ -1,0 +1,39 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build Raylib Game",
+      "type": "shell",
+      "command": "C:/raylib/w64devkit/bin/gcc.exe",
+      "args": [
+        "src/main.c",
+        "src/game.c",
+        "src/menu.c",
+        "src/dialog.c",
+        "src/events.c",
+        "src/elevator.c",
+        "src/level1.c",
+        "src/level2.c",
+        "src/level3.c",
+        "src/level4.c",
+        "src/ending.c",
+        "src/zuma.c",
+        "-Isrc",
+        "-Iinclude",
+        "-IC:/raylib/w64devkit/x86_64-w64-mingw32/include",
+        "-LC:/raylib/w64devkit/x86_64-w64-mingw32/lib",
+        "-lraylib",
+        "-lopengl32",
+        "-lgdi32",
+        "-lwinmm",
+        "-o",
+        "game.exe"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": ["$gcc"]
+    }
+  ]
+}
