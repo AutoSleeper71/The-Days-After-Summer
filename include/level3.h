@@ -3,6 +3,7 @@
 
 #include "game.h"
 
+void InitLevel3(void);
 GameState UpdateLevel3(void);
 
 #endif

@@ -246,3 +246,13 @@ void DrawMinigame(void) {
 
 // check if the minigame is finished,used to return to the main game
 bool IsMinigameWon(void) { return miniGameWon; }
+
+void ResetMinigameProgress(void)
+{
+    miniCurrentLevel = 0;
+    miniScore = 0;
+    miniGameWon = false;
+    miniChainCount = 0;
+
+    for (int i = 0; i < MAX_PROJECTILES; i++) miniProjectiles[i].active = false;
+}

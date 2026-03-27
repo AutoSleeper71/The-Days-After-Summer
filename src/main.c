@@ -27,7 +27,7 @@ int main(void)
     EndDrawing();
     EventsLoadResources();
 
-    GameState state = LEVEL2;
+    GameState state = LEVEL3;
 
     while (!WindowShouldClose())
     {

@@ -18,4 +18,7 @@ bool IsMinigameWon(void);
 // get the score of the minigame
 int GetMinigameScore(void);
 
+// reset score and stage progress before starting a new session
+void ResetMinigameProgress(void);
+
 #endif

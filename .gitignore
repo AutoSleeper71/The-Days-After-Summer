@@ -1,18 +1,11 @@
-# build
+# Build files
 *.exe
+*.out
 *.o
-*.obj
-*.dll
 
-# raylib build
-build/
-bin/
-
-# vscode
+# VS Code
 .vscode/
 
-# temp
-*.log
-
-*.exe
-*.code-workspace
+# OS junk
+.DS_Store
+Thumbs.db
