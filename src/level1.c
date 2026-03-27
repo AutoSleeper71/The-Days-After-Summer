@@ -34,11 +34,6 @@ static bool IsGirlSpeaker(const char *speaker)
            (strcmp(speaker, "HER") == 0);
 }
 
-static bool IsNarrationSpeaker(const char *speaker)
-{
-    return strcmp(speaker, "Narration") == 0;
-}
-
 static int AvatarForSpeaker(const char *speaker)
 {
     if (IsProtagonistSpeaker(speaker)) return AVATAR_NEUTRAL;
@@ -46,7 +41,7 @@ static int AvatarForSpeaker(const char *speaker)
     return AVATAR_NONE;
 }
 
-/* preload the avatar for the NEXT node so there are no blank avatar-change lines */
+/* preload only the NEXT avatar show so there are no blank avatar-change lines */
 static void ApplyAvatarPreload(DialogNode *nodes, int count)
 {
     for (int i = 0; i < count - 1; i++)
@@ -64,12 +59,27 @@ static void ApplyAvatarPreload(DialogNode *nodes, int count)
                 cur->avatarId = nextAvatar;
             }
         }
-        else if (!IsNarrationSpeaker(cur->speaker))
+    }
+}
+
+static bool ValidateScript(const DialogNode *nodes, int count)
+{
+    for (int i = 0; i < count; i++)
+    {
+        if (nodes[i].next < -1 || nodes[i].next >= count)
+            return false;
+
+        if (nodes[i].choiceCount < 0 || nodes[i].choiceCount > MAX_CHOICES)
+            return false;
+
+        for (int c = 0; c < nodes[i].choiceCount; c++)
         {
-            cur->event |= EVENT_AVATAR_HIDE;
-            cur->avatarId = AVATAR_NONE;
+            int target = nodes[i].choices[c].next;
+            if (target < 0 || target >= count)
+                return false;
         }
     }
+    return true;
 }
 
 static const DialogNode level1Template[] =
@@ -274,14 +284,23 @@ static const DialogNode level1Template[] =
 
 static void InitLevel1State(void)
 {
+    int count = ARRAY_COUNT(level1Template);
+
     waitingOnEvent = false;
     EventsInit();
     EventsTrigger(EVENT_CHANGE_BACKGROUND, BG_INSIDE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE);
 
-    CopyScript(level1Template, ARRAY_COUNT(level1Template));
-    ApplyAvatarPreload(activeNodes, ARRAY_COUNT(level1Template));
-    DialogStart(&level1Dialog, activeNodes);
+    CopyScript(level1Template, count);
+    ApplyAvatarPreload(activeNodes, count);
 
+    if (!ValidateScript(activeNodes, count))
+    {
+        TraceLog(LOG_ERROR, "Level1 dialog script has invalid indices.");
+        level1Initialized = false;
+        return;
+    }
+
+    DialogStart(&level1Dialog, activeNodes);
     level1Initialized = true;
 }
 
@@ -294,6 +313,12 @@ GameState UpdateLevel1(void)
 {
     if (!level1Initialized)
         InitLevel1State();
+
+    if (!level1Initialized)
+    {
+        DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), BLACK);
+        return LEVEL1;
+    }
 
     EventsUpdate();
 

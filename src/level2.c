@@ -32,13 +32,6 @@ static bool IsGirlSpeaker(const char *speaker)
     return strcmp(speaker, "Her") == 0;
 }
 
-static bool IsNarrationSpeaker(const char *speaker)
-{
-    return (strcmp(speaker, "Narration") == 0) ||
-           (strcmp(speaker, "Voice") == 0) ||
-           (strcmp(speaker, "Choice") == 0);
-}
-
 static int AvatarForSpeaker(const char *speaker)
 {
     if (IsProtagonistSpeaker(speaker)) return AVATAR_NEUTRAL;
@@ -46,7 +39,7 @@ static int AvatarForSpeaker(const char *speaker)
     return AVATAR_NONE;
 }
 
-/* preload avatar one real node ahead so there are no blank avatar nodes */
+/* preload only the NEXT avatar show so there are no blank avatar nodes */
 static void ApplyAvatarPreload(DialogNode *nodes, int count)
 {
     for (int i = 0; i < count - 1; i++)
@@ -64,19 +57,32 @@ static void ApplyAvatarPreload(DialogNode *nodes, int count)
                 cur->avatarId = nextAvatar;
             }
         }
-        else if (!IsNarrationSpeaker(cur->speaker))
+    }
+}
+
+static bool ValidateScript(const DialogNode *nodes, int count)
+{
+    for (int i = 0; i < count; i++)
+    {
+        if (nodes[i].next < -1 || nodes[i].next >= count)
+            return false;
+
+        if (nodes[i].choiceCount < 0 || nodes[i].choiceCount > MAX_CHOICES)
+            return false;
+
+        for (int c = 0; c < nodes[i].choiceCount; c++)
         {
-            cur->event |= EVENT_AVATAR_HIDE;
-            cur->avatarId = AVATAR_NONE;
+            int target = nodes[i].choices[c].next;
+            if (target < 0 || target >= count)
+                return false;
         }
     }
+    return true;
 }
 
 static const DialogNode level2Template[] =
 {
-    /* =========================
-       SCENE 0 - THE ELEVATOR 2.0
-       ========================= */
+
 
     { "Narration", "A pit of dread fills your stomach...",
       EVENT_FADE_IN, BG_NONE, AVATAR_NONE, SOUND_NONE,
@@ -249,7 +255,7 @@ static const DialogNode level2Template[] =
 
     { "Narration", "She's far too tired for that now.",
       EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE,
-      INSPECT_NONE, 0, {}, 49 },
+      INSPECT_NONE, 0, {}, 58 },
 
     /* Option B */
 
@@ -535,7 +541,7 @@ static const DialogNode level2Template[] =
 
     { "Her", "Thank you too.",
       EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE,
-      INSPECT_NONE, 0, {}, 104 },
+      INSPECT_NONE, 0, {}, 103 },
 
     { "Narration", "The memory fades.",
       EVENT_EYES_CLOSE | EVENT_DIALOG_HIDE | EVENT_AVATAR_HIDE | EVENT_GO_LEVEL3,
@@ -545,14 +551,23 @@ static const DialogNode level2Template[] =
 
 static void InitLevel2State(void)
 {
+    int count = ARRAY_COUNT(level2Template);
+
     waitingOnEvent = false;
     EventsInit();
     EventsTrigger(EVENT_CHANGE_BACKGROUND, BG_INSIDE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE);
 
-    CopyScript(level2Template, ARRAY_COUNT(level2Template));
-    ApplyAvatarPreload(activeNodes, ARRAY_COUNT(level2Template));
-    DialogStart(&level2Dialog, activeNodes);
+    CopyScript(level2Template, count);
+    ApplyAvatarPreload(activeNodes, count);
 
+    if (!ValidateScript(activeNodes, count))
+    {
+        TraceLog(LOG_ERROR, "Level2 dialog script has invalid indices.");
+        level2Initialized = false;
+        return;
+    }
+
+    DialogStart(&level2Dialog, activeNodes);
     level2Initialized = true;
 }
 
@@ -566,7 +581,22 @@ GameState UpdateLevel2(void)
     if (!level2Initialized)
         InitLevel2State();
 
+    if (!level2Initialized)
+{
+    DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), BLACK);
+    DrawText("Level 2 failed to initialize", 40, 40, 24, RED);
+    return LEVEL2;
+}
+
     EventsUpdate();
+
+    GameState requestedState;
+    if (EventsConsumeTransition(&requestedState))
+    {
+        level2Initialized = false;
+        if (requestedState == LEVEL3) level3Unlocked = 1;
+        return requestedState;
+    }
 
     Texture2D *bg = EventsGetCurrentBackground();
     if (bg && bg->id != 0)
@@ -618,13 +648,6 @@ GameState UpdateLevel2(void)
 
         if (EventsIsDialogVisible())
             DialogDraw(&level2Dialog);
-    }
-    else
-    {
-        nextLevel = LEVEL3;
-        level3Unlocked = 1;
-        level2Initialized = false;
-        return ELEVATOR;
     }
 
     EventsDrawOverlay();

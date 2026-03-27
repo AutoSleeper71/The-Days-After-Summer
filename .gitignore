@@ -1,0 +1,18 @@
+# build
+*.exe
+*.o
+*.obj
+*.dll
+
+# raylib build
+build/
+bin/
+
+# vscode
+.vscode/
+
+# temp
+*.log
+
+*.exe
+*.code-workspace
