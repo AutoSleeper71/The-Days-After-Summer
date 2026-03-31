@@ -1,3 +1,6 @@
+/* Ending controller.
+   Selects one of several ending scripts and plays it through the shared dialogue/event system. */
+
 #include "ending.h"
 #include "raylib.h"
 #include "game.h"
@@ -5,6 +8,7 @@
 #include "events.h"
 #include <string.h>
 
+// File-specific compile-time limit used to size arrays safely.
 #define MAX_ENDING_NODES 64
 
 static DialogState endingDialog;
@@ -13,17 +17,15 @@ static DialogNode endingNodes[MAX_ENDING_NODES];
 /* controls flow */
 static bool waitingOnEvent = false;
 
-/* =========================
-   SCRIPTS (UNCHANGED)
-   ========================= */
+// SCRIPT
 
 static const DialogNode goodEndingTemplate[] =
 {
     { // 0
         "Narration",
         "Six months have passed since the incident.",
-        EVENT_CHANGE_BACKGROUND | EVENT_FADE_IN,
-        BG_HAPPY_ENDING, AVATAR_NONE, SOUND_NONE,
+        EVENT_CHANGE_BACKGROUND | EVENT_FADE_IN | EVENT_PLAY_SOUND,
+        BG_HAPPY_ENDING, AVATAR_NONE, SOUND_GOOD_END,
         INSPECT_NONE,
         0, {}, 1
     },
@@ -121,7 +123,7 @@ static const DialogNode goodEndingTemplate[] =
     { // 11
         "Narration",
         "…Take it slow.",
-        EVENT_FADE_OUT,
+        EVENT_NONE,
         BG_NONE, AVATAR_NONE, SOUND_NONE,
         INSPECT_NONE,
         0, {}, 12
@@ -142,8 +144,8 @@ static const DialogNode neutralEndingTemplate[] =
     { // 0
         "Narration",
         "Six months have passed since the incident.",
-        EVENT_CHANGE_BACKGROUND | EVENT_FADE_IN,
-        BG_NEUTRAL_ENDING, AVATAR_NONE, SOUND_NONE,
+        EVENT_CHANGE_BACKGROUND | EVENT_FADE_IN | EVENT_PLAY_SOUND,
+        BG_NEUTRAL_ENDING, AVATAR_NONE, SOUND_NEUT_END,
         INSPECT_NONE,
         0, {}, 1
     },
@@ -241,7 +243,7 @@ static const DialogNode neutralEndingTemplate[] =
     { // 11
         "Narration",
         "The fact that you're still moving forward is already something beautiful.",
-        EVENT_FADE_OUT,
+        EVENT_NONE,
         BG_NONE, AVATAR_NONE, SOUND_NONE,
         INSPECT_NONE,
         0, {}, 12
@@ -263,7 +265,7 @@ static const DialogNode badEndingTemplate[] =
         "Narration",
         "It's been six months since the incident.",
         EVENT_CHANGE_BACKGROUND,
-        BG_ROOM, AVATAR_NONE, SOUND_NONE,
+        BG_BAD_ENDING, AVATAR_NONE, SOUND_NONE,
         INSPECT_NONE,
         0, {}, 1
     },
@@ -334,7 +336,7 @@ static const DialogNode badEndingTemplate[] =
     { // 8
         "Narration",
         "You made yourself believe that it's never going to get better.",
-        EVENT_FADE_OUT,
+        EVENT_NONE,
         BG_NONE, AVATAR_NONE, SOUND_NONE,
         INSPECT_NONE,
         0, {}, 9
@@ -352,6 +354,8 @@ static const DialogNode badEndingTemplate[] =
 
 /* ========================= */
 
+/* Copy the selected ending template into a writable buffer.
+   The dialogue system mutates nodes when events trigger, so templates stay const. */
 static void CopyScript(const DialogNode *src, int count)
 {
     if (count > MAX_ENDING_NODES) count = MAX_ENDING_NODES;
@@ -362,6 +366,7 @@ static void CopyScript(const DialogNode *src, int count)
    INIT
    ========================= */
 
+/* Choose which ending script to play and reset the shared event state for the ending scene. */
 void InitEnding(GameState endingType)
 {
     waitingOnEvent = false;
@@ -390,6 +395,7 @@ void InitEnding(GameState endingType)
    UPDATE
    ========================= */
 
+/* Draw and advance the ending scene until the player returns to the menu. */
 GameState UpdateEnding(GameState endingType)
 {
     GameState requestedState;
@@ -449,7 +455,7 @@ GameState UpdateEnding(GameState endingType)
     }
 
     /* =========================
-       DIALOG SYSTEM (FIXED)
+       DIALOG SYSTEM 
        ========================= */
 
     if (!endingDialog.finished)

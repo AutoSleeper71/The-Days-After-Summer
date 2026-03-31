@@ -1,3 +1,6 @@
+/* Level 3 scene logic.
+   Starts with dialogue, then switches into a simple turn-based battle, then resolves the result. */
+
 #include "level3.h"
 #include "raylib.h"
 #include "game.h"
@@ -6,520 +9,704 @@
 
 #include <string.h>
 #include <stdbool.h>
-
-#define ARRAY_COUNT(a) ((int)(sizeof(a) / sizeof((a)[0])))
-#define MAX_LEVEL3_NODES 96
+#include <stdio.h>
 
 #define PLAYER_MAX_HP 100
-#define ENEMY_MAX_HP 90
+#define ENEMY_MAX_HP 120
+// File-specific compile-time limit used to size arrays safely.
+#define MAX_LEVEL3_NODES 96
+#define LEVEL3_START_FADE_TIME 2.0f
+
+#define PLAYER_BAR_W 240
+#define ENEMY_BAR_W 240
+
+static Music battleMusic;
+static bool musicLoaded = false;
+static bool musicPlaying = false;
 
 typedef enum
 {
-    LEVEL3_PHASE_DIALOG = 0,
-    LEVEL3_PHASE_RPG,
-    LEVEL3_PHASE_RESULT
+    PHASE_DIALOG,
+    PHASE_BATTLE,
+    PHASE_RESULT
 } Level3Phase;
 
+typedef enum
+{
+    TURN_PLAYER,
+    TURN_ENEMY_DELAY,
+    TURN_ENEMY_ATTACK
+} BattleTurn;
+
+/* Stores all battle-related values in one place so the fight can be reset and updated cleanly. */
 typedef struct
 {
     int playerHp;
     int enemyHp;
-    int playerGuard;
-    int healCharges;
-    bool playerTurn;
+    int guard;
+    int healsLeft;
+    int healsUsed;
+
     bool finished;
     bool playerWon;
-    int turnNumber;
+
+    BattleTurn turn;
+    float timer;
+
+    float shownPlayerHp;
+    float shownEnemyHp;
+
+    float playerHitTimer;
+    float enemyHitTimer;
+    float playerAttackTimer;
+    float enemyAttackTimer;
+    float healFlashTimer;
+    float screenShakeTimer;
+    float reportFlashTimer;
+
     char message[256];
-} Level3Battle;
+} BattleState;
 
-static bool level3Initialized = false;
-static DialogState level3Dialog;
-static DialogNode activeNodes[MAX_LEVEL3_NODES];
-static bool waitingOnEvent = false;
-static Level3Phase level3Phase = LEVEL3_PHASE_DIALOG;
-static Level3Battle battle;
+static Level3Phase phase;
+static BattleState battle;
 
-static Texture2D bgBattle;
-static Texture2D texPlayer;
-static Texture2D texEnemy;
-static bool artLoaded = false;
+static bool initialized = false;
+static bool waitingEvent = false;
+static bool introFadeActive = false;
+static float introFadeTimer = 0.0f;
 
-static bool TryLoadTexture(Texture2D *out, const char *path)
+static DialogState dialog;
+static DialogNode nodes[MAX_LEVEL3_NODES];
+
+static Texture2D bg;
+static Texture2D playerNeutral;
+static Texture2D playerSad;
+static Texture2D enemyDevil;
+
+static bool loaded = false;
+
+/* Small math helper: clamps a float to the 0..1 range. */
+static float Clamp01(float v)
 {
-    if (!FileExists(path))
+    if (v < 0.0f) return 0.0f;
+    if (v > 1.0f) return 1.0f;
+    return v;
+}
+
+/* Smoothly move one float toward another.
+   Used for HP bar animation and attack/hit timers. */
+static float ApproachFloat(float current, float target, float speed)
+{
+    if (current < target)
     {
-        *out = (Texture2D){0};
-        return false;
+        current += speed;
+        if (current > target) current = target;
     }
-
-    *out = LoadTexture(path);
-    return true;
-}
-
-static void EnsureArtLoaded(void)
-{
-    if (artLoaded) return;
-
-    TryLoadTexture(&bgBattle, "assets/EmptyDiner.png");
-    if (bgBattle.id == 0) TryLoadTexture(&bgBattle, "assets/Diner.png");
-
-    TryLoadTexture(&texPlayer, "assets/character.png");
-    if (texPlayer.id == 0) TryLoadTexture(&texPlayer, "assets/HappyMan.png");
-
-    TryLoadTexture(&texEnemy, "assets/Disapointed.png");
-    if (texEnemy.id == 0) TryLoadTexture(&texEnemy, "assets/Happy.png");
-
-    artLoaded = true;
-}
-
-static void CopyScript(const DialogNode *src, int count)
-{
-    if (count > MAX_LEVEL3_NODES) count = MAX_LEVEL3_NODES;
-    memcpy(activeNodes, src, sizeof(DialogNode) * count);
-}
-
-static bool IsProtagonistSpeaker(const char *speaker)
-{
-    return (strcmp(speaker, "You") == 0) ||
-           (strcmp(speaker, "Daniel") == 0) ||
-           (strcmp(speaker, "Him") == 0);
-}
-
-static bool IsFriendSpeaker(const char *speaker)
-{
-    return strcmp(speaker, "Friend") == 0;
-}
-
-static int AvatarForSpeaker(const char *speaker)
-{
-    if (IsProtagonistSpeaker(speaker)) return AVATAR_NEUTRAL;
-    if (IsFriendSpeaker(speaker)) return AVATAR_GIRL_HAPPY;
-    return AVATAR_NONE;
-}
-
-static void ApplyAvatarPreload(DialogNode *nodes, int count)
-{
-    for (int i = 0; i < count - 1; i++)
+    else if (current > target)
     {
-        DialogNode *cur = &nodes[i];
-        DialogNode *next = &nodes[i + 1];
-        int nextAvatar = AvatarForSpeaker(next->speaker);
-
-        if (nextAvatar != AVATAR_NONE && (cur->event & EVENT_AVATAR_HIDE) == 0)
-        {
-            cur->event |= EVENT_AVATAR_SHOW;
-            cur->avatarId = nextAvatar;
-        }
+        current -= speed;
+        if (current < target) current = target;
     }
+    return current;
 }
 
-static bool ValidateScript(const DialogNode *nodes, int count)
+/* Try to load a texture, but return an empty texture if the file is missing. */
+static Texture2D SafeLoad(const char *path)
+{
+    if (FileExists(path)) return LoadTexture(path);
+    return (Texture2D){0};
+}
+
+static Texture2D LoadFirstExisting(const char *paths[], int count)
 {
     for (int i = 0; i < count; i++)
     {
-        if (nodes[i].next < -1 || nodes[i].next >= count)
-            return false;
-
-        if (nodes[i].choiceCount < 0 || nodes[i].choiceCount > MAX_CHOICES)
-            return false;
-
-        for (int c = 0; c < nodes[i].choiceCount; c++)
-        {
-            int target = nodes[i].choices[c].next;
-            if (target < 0 || target >= count)
-                return false;
-        }
+        if (FileExists(paths[i]))
+            return LoadTexture(paths[i]);
     }
-    return true;
+    return (Texture2D){0};
 }
 
-static const DialogNode level3Template[] =
+static void LoadAssets(void)
 {
+    if (loaded) return;
+
+    if (!musicLoaded && FileExists("assets/battle.mp3"))
+    {
+        battleMusic = LoadMusicStream("assets/battle.mp3");
+        musicLoaded = true;
+    }
+
+    bg = SafeLoad("assets/EmptyDiner.png");
+    if (!bg.id) bg = SafeLoad("assets/Diner.png");
+
+    playerNeutral = SafeLoad("assets/Neutral.png");
+    if (!playerNeutral.id) playerNeutral = SafeLoad("assets/character.png");
+
+    playerSad = SafeLoad("assets/Sad.png");
+    if (!playerSad.id) playerSad = playerNeutral;
+
+    const char *devilCandidates[] = {
+        "assets/Character_demon.png",
+        "assets/Character_devil.png",
+        "assets/Devil.png",
+        "assets/devil.png",
+        "assets/DevilCharacter.png"
+    };
+
+    enemyDevil = LoadFirstExisting(devilCandidates, (int)(sizeof(devilCandidates) / sizeof(devilCandidates[0])));
+    if (!enemyDevil.id) enemyDevil = playerSad.id ? playerSad : playerNeutral;
+
+    loaded = true;
+}
+
+/* Setup dialogue shown before the battle begins. */
+static const DialogNode template[] = {
     { "Narration", "The elevator jerks to a stop before you can steady your breathing.",
-      EVENT_CHANGE_BACKGROUND | EVENT_FADE_IN, BG_INSIDE, AVATAR_NONE, SOUND_NONE,
-      INSPECT_NONE, 0, {}, 1 },
+      EVENT_CHANGE_BACKGROUND | EVENT_PLAY_SOUND, BG_INSIDE, AVATAR_NONE, SOUND_ELEVATOR_SCARY, INSPECT_NONE, 0, {}, 1 },
 
     { "Narration", "Your phone vibrates in your pocket.",
-      EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE,
-      INSPECT_NONE, 0, {}, 2 },
+      EVENT_PLAY_SOUND, BG_NONE, AVATAR_NONE, SOUND_CALL, INSPECT_NONE, 0, {}, 2 },
 
     { "Friend", "Hey. Please pick up.",
-      EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE,
-      INSPECT_NONE, 0, {}, 3 },
+      EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 3 },
 
     { "Friend", "You've been shutting everyone out since the break up.",
-      EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE,
-      INSPECT_NONE, 0, {}, 4 },
+      EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 4 },
 
     { "Friend", "I know you're hurting, but disappearing like this isn't helping you.",
-      EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE,
-      INSPECT_NONE, 0, {}, 5 },
+      EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 5 },
 
     { "You", "I don't know what to say anymore.",
-      EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE,
-      INSPECT_NONE, 0, {}, 6 },
+      EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 6 },
 
     { "Friend", "Then start with something honest.",
-      EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE,
-      INSPECT_NONE, 0, {}, 7 },
+      EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 7 },
 
     { "Friend", "Fight for yourself for once.",
-      EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE,
-      INSPECT_NONE, 0, {}, 8 },
+      EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 8 },
 
     { "Narration", "The words hit harder than they should.",
-      EVENT_SHAKE_SCREEN, BG_NONE, AVATAR_NONE, SOUND_RUMBLE,
-      INSPECT_NONE, 0, {}, 9 },
+      EVENT_SHAKE_SCREEN, BG_NONE, AVATAR_NONE, SOUND_RUMBLE, INSPECT_NONE, 0, {}, 9 },
 
     { "Narration", "In your head, the conversation twists into something uglier.",
-      EVENT_CHANGE_BACKGROUND | EVENT_FADE_IN, BG_L2_DINER_BOOTH, AVATAR_NONE, SOUND_NONE,
-      INSPECT_NONE, 0, {}, 10 },
+      EVENT_CHANGE_BACKGROUND | EVENT_FADE_IN, BG_L2_DINER_BOOTH, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 10 },
 
     { "Narration", "Not your friend. Not really.",
-      EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE,
-      INSPECT_NONE, 0, {}, 11 },
+      EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 11 },
 
     { "Narration", "Just the part of you that would rather lash out than listen.",
-      EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE,
-      INSPECT_NONE, 0, {}, 12 },
+      EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 12 },
 
     { "You", "Then fine. I'll fight it.",
-      EVENT_AVATAR_SHOW | EVENT_FADE_OUT, BG_NONE, AVATAR_NEUTRAL, SOUND_NONE,
-      INSPECT_NONE, 0, {}, -1 }
+      EVENT_AVATAR_SHOW | EVENT_FADE_OUT, BG_NONE, AVATAR_NEUTRAL, SOUND_NONE, INSPECT_NONE, 0, {}, -1 }
 };
 
 static void StartBattle(void)
 {
     battle.playerHp = PLAYER_MAX_HP;
     battle.enemyHp = ENEMY_MAX_HP;
-    battle.playerGuard = 0;
-    battle.healCharges = 3;
-    battle.playerTurn = true;
+    battle.guard = 0;
+    battle.healsLeft = 3;
+    battle.healsUsed = 0;
+
     battle.finished = false;
     battle.playerWon = false;
-    battle.turnNumber = 1;
-    strcpy(battle.message, "Your turn. A=Attack  G=Guard  H=Heal");
+
+    battle.turn = TURN_PLAYER;
+    battle.timer = 0.0f;
+
+    battle.shownPlayerHp = (float)PLAYER_MAX_HP;
+    battle.shownEnemyHp = (float)ENEMY_MAX_HP;
+
+    battle.playerHitTimer = 0.0f;
+    battle.enemyHitTimer = 0.0f;
+    battle.playerAttackTimer = 0.0f;
+    battle.enemyAttackTimer = 0.0f;
+    battle.healFlashTimer = 0.0f;
+    battle.screenShakeTimer = 0.0f;
+    battle.reportFlashTimer = 0.0f;
+
+    strcpy(battle.message, "Battle starts. Endure the hits, heal, and strike back.");
 }
 
 static void InitLevel3State(void)
 {
-    int count = ARRAY_COUNT(level3Template);
+    LoadAssets();
 
-    waitingOnEvent = false;
-    level3Phase = LEVEL3_PHASE_DIALOG;
+    memcpy(nodes, template, sizeof(template));
+    DialogStart(&dialog, nodes);
 
-    EnsureArtLoaded();
     EventsInit();
     EventsTrigger(EVENT_CHANGE_BACKGROUND, BG_INSIDE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE);
 
-    CopyScript(level3Template, count);
-    ApplyAvatarPreload(activeNodes, count);
-
-    if (!ValidateScript(activeNodes, count))
-    {
-        TraceLog(LOG_ERROR, "Level3 dialog script has invalid indices.");
-        level3Initialized = false;
-        return;
-    }
-
-    DialogStart(&level3Dialog, activeNodes);
     StartBattle();
-    level3Initialized = true;
-}
+    phase = PHASE_DIALOG;
+    waitingEvent = false;
+    introFadeActive = true;
+    introFadeTimer = 0.0f;
 
-static void DrawBattleTexture(Texture2D tex, Rectangle dest, Color tint)
-{
-    if (tex.id != 0)
-    {
-        DrawTexturePro(tex,
-            (Rectangle){0, 0, (float)tex.width, (float)tex.height},
-            dest,
-            (Vector2){0, 0},
-            0.0f,
-            tint);
-    }
-    else
-    {
-        DrawRectangleRounded(dest, 0.15f, 8, Fade(tint, 0.9f));
-    }
-}
-
-static void DrawHealthBar(int x, int y, int width, int hp, int maxHp, const char *label)
-{
-    DrawText(label, x, y - 28, 24, WHITE);
-    DrawRectangle(x, y, width, 22, Fade(WHITE, 0.18f));
-
-    if (hp < 0) hp = 0;
-    int fill = (int)((float)width * ((float)hp / (float)maxHp));
-    DrawRectangle(x, y, fill, 22, RED);
-    DrawRectangleLines(x, y, width, 22, WHITE);
-
-    DrawText(TextFormat("%d / %d", hp, maxHp), x + width + 20, y - 2, 20, WHITE);
-}
-
-static void EnemyTurn(void)
-{
-    int actionRoll = GetRandomValue(0, 99);
-    int damage = 0;
-
-    if (battle.enemyHp <= 25 && actionRoll < 35)
-    {
-        damage = 22;
-        strcpy(battle.message, "The memory hits back hard.");
-    }
-    else if (actionRoll < 70)
-    {
-        damage = 14;
-        strcpy(battle.message, "The memory lashes out.");
-    }
-    else
-    {
-        damage = 8;
-        strcpy(battle.message, "The memory hesitates, but still hurts you.");
-    }
-
-    if (battle.playerGuard > 0)
-    {
-        damage /= 2;
-        battle.playerGuard = 0;
-        strcat(battle.message, " Your guard softens the blow.");
-    }
-
-    battle.playerHp -= damage;
-    if (battle.playerHp <= 0)
-    {
-        battle.playerHp = 0;
-        battle.finished = true;
-        battle.playerWon = false;
-        strcpy(battle.message, "You collapse under the weight of your anger.");
-        level3Phase = LEVEL3_PHASE_RESULT;
-        return;
-    }
-
-    battle.playerTurn = true;
-    battle.turnNumber++;
-}
-
-static void UpdateBattle(void)
-{
-    if (battle.finished) return;
-
-    if (battle.playerTurn)
-    {
-        if (IsKeyPressed(KEY_A))
-        {
-            int damage = GetRandomValue(16, 24);
-            battle.enemyHp -= damage;
-            strcpy(battle.message, TextFormat("You steady yourself and deal %d damage.", damage));
-            battle.playerTurn = false;
-        }
-        else if (IsKeyPressed(KEY_G))
-        {
-            battle.playerGuard = 1;
-            strcpy(battle.message, "You brace for the next hit.");
-            battle.playerTurn = false;
-        }
-        else if (IsKeyPressed(KEY_H))
-        {
-            if (battle.healCharges > 0)
-            {
-                int heal = GetRandomValue(14, 22);
-                battle.playerHp += heal;
-                if (battle.playerHp > PLAYER_MAX_HP) battle.playerHp = PLAYER_MAX_HP;
-                battle.healCharges--;
-                strcpy(battle.message, TextFormat("You recover %d HP.", heal));
-                battle.playerTurn = false;
-            }
-            else
-            {
-                strcpy(battle.message, "No heals left.");
-            }
-        }
-
-        if (!battle.playerTurn)
-        {
-            if (battle.enemyHp <= 0)
-            {
-                battle.enemyHp = 0;
-                battle.finished = true;
-                battle.playerWon = true;
-                strcpy(battle.message, "You break through the spiral and reclaim your voice.");
-                level3Phase = LEVEL3_PHASE_RESULT;
-            }
-        }
-    }
-    else
-    {
-        EnemyTurn();
-    }
-}
-
-static void DrawBattleScene(void)
-{
-    int w = GetScreenWidth();
-    int h = GetScreenHeight();
-
-    if (bgBattle.id != 0)
-        DrawTexturePro(bgBattle,
-            (Rectangle){0, 0, (float)bgBattle.width, (float)bgBattle.height},
-            (Rectangle){0, 0, (float)w, (float)h},
-            (Vector2){0, 0},
-            0.0f,
-            WHITE);
-    else
-        DrawRectangle(0, 0, w, h, BLACK);
-
-    DrawRectangle(0, 0, w, h, Fade(BLACK, 0.45f));
-    DrawText("LEVEL 3 - ANGER", 80, 50, 42, WHITE);
-    DrawText("Fight the version of yourself that wants to lash out.", 80, 100, 24, LIGHTGRAY);
-
-    DrawHealthBar(90, 170, 320, battle.playerHp, PLAYER_MAX_HP, "Daniel");
-    DrawHealthBar(w - 470, 170, 320, battle.enemyHp, ENEMY_MAX_HP, "Spiral");
-
-    DrawBattleTexture(texPlayer,
-        (Rectangle){120, 250, 360, 520},
-        WHITE);
-    DrawBattleTexture(texEnemy,
-        (Rectangle){w - 500, 250, 320, 460},
-        WHITE);
-
-    DrawRectangle(70, h - 250, w - 140, 180, Fade(BLACK, 0.78f));
-    DrawRectangleLines(70, h - 250, w - 140, 180, Fade(WHITE, 0.35f));
-
-    DrawText(TextFormat("Turn %d", battle.turnNumber), 100, h - 220, 26, YELLOW);
-    DrawText(TextFormat("Heals left: %d", battle.healCharges), 260, h - 220, 26, SKYBLUE);
-    DrawText(battle.message, 100, h - 180, 28, WHITE);
-
-    if (!battle.finished)
-    {
-        Color promptColor = battle.playerTurn ? WHITE : GRAY;
-        DrawText("A - Attack", 100, h - 125, 28, promptColor);
-        DrawText("G - Guard", 320, h - 125, 28, promptColor);
-        DrawText("H - Heal", 520, h - 125, 28, promptColor);
-
-        if (!battle.playerTurn)
-            DrawText("Enemy turn...", w - 320, h - 125, 28, ORANGE);
-    }
+    initialized = true;
 }
 
 void InitLevel3(void)
 {
-    level3Initialized = false;
+    initialized = false;
+}
+
+/* Let temporary animation timers decay back to zero every frame. */
+static void StepBattleAnimationTimers(float dt)
+{
+    battle.playerHitTimer = ApproachFloat(battle.playerHitTimer, 0.0f, dt);
+    battle.enemyHitTimer = ApproachFloat(battle.enemyHitTimer, 0.0f, dt);
+    battle.playerAttackTimer = ApproachFloat(battle.playerAttackTimer, 0.0f, dt);
+    battle.enemyAttackTimer = ApproachFloat(battle.enemyAttackTimer, 0.0f, dt);
+    battle.healFlashTimer = ApproachFloat(battle.healFlashTimer, 0.0f, dt);
+    battle.screenShakeTimer = ApproachFloat(battle.screenShakeTimer, 0.0f, dt);
+    battle.reportFlashTimer = ApproachFloat(battle.reportFlashTimer, 0.0f, dt * 1.5f);
+
+    battle.shownPlayerHp = ApproachFloat(battle.shownPlayerHp, (float)battle.playerHp, 45.0f * dt);
+    battle.shownEnemyHp = ApproachFloat(battle.shownEnemyHp, (float)battle.enemyHp, 45.0f * dt);
+}
+
+/* Trigger short visual feedback after someone gets hit. */
+static void PushBattleFeedback(bool playerWasHit, bool enemyWasHit)
+{
+    if (playerWasHit) battle.playerHitTimer = 0.22f;
+    if (enemyWasHit) battle.enemyHitTimer = 0.22f;
+    battle.screenShakeTimer = 0.18f;
+    battle.reportFlashTimer = 0.20f;
+}
+
+static void UpdateBattle(void)
+{
+    float dt = GetFrameTime();
+    StepBattleAnimationTimers(dt);
+
+    if (battle.finished) return;
+
+    if (battle.turn == TURN_PLAYER)
+    {
+        // Attack: basic damage option. It becomes slightly stronger after several heals so the fight cannot stall forever.
+        if (IsKeyPressed(KEY_A))
+        {
+            int dealt = GetRandomValue(11, 15);
+            if (battle.healsUsed >= 3) dealt += GetRandomValue(3, 4);
+
+            battle.enemyHp -= dealt;
+            if (battle.enemyHp < 0) battle.enemyHp = 0;
+
+            battle.playerAttackTimer = 0.18f;
+            PushBattleFeedback(false, true);
+
+            
+
+            if (battle.enemyHp <= 0)
+            {
+                battle.finished = true;
+                battle.playerWon = true;
+                phase = PHASE_RESULT;
+                return;
+            }
+
+            battle.turn = TURN_ENEMY_DELAY;
+            battle.timer = 0.0f;
+        }
+        // Guard: reduce the next incoming hit.
+        else if (IsKeyPressed(KEY_G))
+        {
+            battle.guard = 1;
+            strcpy(battle.message, "Player guards and braces for the next hit.");
+            battle.reportFlashTimer = 0.18f;
+            battle.turn = TURN_ENEMY_DELAY;
+            battle.timer = 0.0f;
+        }
+        // Heal: restore HP, but with limited uses.
+        else if (IsKeyPressed(KEY_H))
+        {
+            if (battle.healsLeft > 0)
+            {
+                int healed = GetRandomValue(28, 34);
+                battle.playerHp += healed;
+                if (battle.playerHp > PLAYER_MAX_HP) battle.playerHp = PLAYER_MAX_HP;
+
+                battle.healsLeft--;
+                battle.healsUsed++;
+                battle.healFlashTimer = 0.25f;
+                battle.reportFlashTimer = 0.20f;
+
+                sprintf(battle.message,
+                        "Player healed %d HP. Heals left: %d.",
+                        healed, battle.healsLeft);
+
+                battle.turn = TURN_ENEMY_DELAY;
+                battle.timer = 0.0f;
+            }
+            else
+            {
+                strcpy(battle.message, "No heals left.");
+                battle.reportFlashTimer = 0.18f;
+            }
+        }
+    }
+    else if (battle.turn == TURN_ENEMY_DELAY)
+    {
+        battle.timer += dt;
+        if (battle.timer > 0.55f)
+            battle.turn = TURN_ENEMY_ATTACK;
+    }
+    else if (battle.turn == TURN_ENEMY_ATTACK)
+    {
+        int taken = GetRandomValue(10, 14);
+if (battle.guard)
+{
+    taken = GetRandomValue(4, 7);
+    battle.guard = 0;
+            sprintf(battle.message,
+                    "Enemy struck for %d damage, but the guard softened the blow.",
+                    taken);
+        }
+        else
+        {
+            sprintf(battle.message,
+                    "Enemy dealt %d damage and pressed the attack.",
+                    taken);
+        }
+
+        battle.enemyAttackTimer = 0.18f;
+        PushBattleFeedback(true, false);
+
+        battle.playerHp -= taken;
+        if (battle.playerHp < 0) battle.playerHp = 0;
+
+        if (battle.playerHp <= 0)
+        {
+            battle.finished = true;
+            battle.playerWon = false;
+            phase = PHASE_RESULT;
+            return;
+        }
+
+        battle.turn = TURN_PLAYER;
+    }
+}
+
+/* Draw one combat HP bar and show whose turn it is with an arrow. */
+static void DrawHealthBar(float x, float y, float width, float height, int hpShown, int hpMax, const char *label, bool activeTurn)
+{
+    float ratio = (hpMax > 0) ? ((float)hpShown / (float)hpMax) : 0.0f;
+    if (ratio < 0.0f) ratio = 0.0f;
+    if (ratio > 1.0f) ratio = 1.0f;
+
+    Rectangle outer = { x, y, width, height };
+    DrawRectangleRounded(outer, 0.18f, 8, Fade(BLACK, 0.76f));
+    DrawRectangleRoundedLinesEx(outer, 0.18f, 8, activeTurn ? 3.0f : 2.0f, WHITE);
+    DrawRectangle((int)x + 8, (int)y + 8, (int)width - 16, (int)height - 16, Fade(DARKGRAY, 0.95f));
+    DrawRectangle((int)x + 8, (int)y + 8, (int)((width - 16.0f) * ratio), (int)height - 16, RED);
+
+    DrawText(label, (int)x + 12, (int)y + 10, 22, WHITE);
+    DrawText(TextFormat("%d / %d", hpShown, hpMax), (int)(x + width - 120), (int)y + 10, 22, WHITE);
+
+    if (activeTurn)
+    {
+        Vector2 a = { x + width * 0.5f, y - 18.0f };
+        Vector2 b = { x + width * 0.5f - 14.0f, y - 42.0f };
+        Vector2 c = { x + width * 0.5f + 14.0f, y - 42.0f };
+        DrawTriangle(a, b, c, YELLOW);
+    }
+}
+
+/* Draw the simple command menu for the player turn. */
+static void DrawChoiceBox(int w, int h)
+{
+    Rectangle box = { w/2.0f - 210.0f, h/2.0f + 70.0f, 420.0f, 170.0f };
+    DrawRectangleRounded(box, 0.12f, 10, Fade(BLACK, 0.78f));
+    DrawRectangleRoundedLinesEx(box, 0.12f, 10, 2.0f, WHITE);
+
+    DrawText("Choose Move", (int)box.x + 120, (int)box.y + 10, 30, WHITE);
+
+    Rectangle attack = { box.x + 18, box.y + 52, box.width - 36, 34 };
+    Rectangle guard  = { box.x + 18, box.y + 92, box.width - 36, 28 };
+    Rectangle heal   = { box.x + 18, box.y + 126, box.width - 36, 28 };
+
+    DrawRectangleLinesEx(attack, 1.5f, WHITE);
+    DrawRectangleLinesEx(guard, 1.5f, WHITE);
+    DrawRectangleLinesEx(heal, 1.5f, WHITE);
+
+    DrawText("A - Attack", (int)attack.x + 14, (int)attack.y + 5, 24, WHITE);
+    DrawText("G - Guard",  (int)guard.x + 14, (int)guard.y + 2, 22, WHITE);
+    DrawText(TextFormat("H - Heal   (%d left)", battle.healsLeft), (int)heal.x + 14, (int)heal.y + 2, 22, WHITE);
+}
+
+static void DrawWrappedReport(const char *text, int x, int y, int maxWidth, int fontSize)
+{
+    Font font = GetFontDefault();
+    int len = (int)strlen(text);
+    int start = 0;
+    char line[256];
+
+    while (start < len)
+    {
+        int end = start;
+        int lastSpace = -1;
+
+        while (end < len)
+        {
+            if (text[end] == ' ') lastSpace = end;
+
+            int count = end - start + 1;
+            if (count >= 255) break;
+
+            strncpy(line, &text[start], count);
+            line[count] = '\0';
+
+            if (MeasureTextEx(font, line, (float)fontSize, 1.0f).x > (float)maxWidth)
+            {
+                if (lastSpace != -1 && lastSpace > start) end = lastSpace;
+                break;
+            }
+            end++;
+        }
+
+        int count = end - start;
+        if (count <= 0) count = 1;
+
+        strncpy(line, &text[start], count);
+        line[count] = '\0';
+
+        DrawText(line, x, y, fontSize, WHITE);
+        y += fontSize + 4;
+
+        start = end;
+        if (text[start] == ' ') start++;
+    }
+}
+
+/* Draw a character sprite with optional attack/hit movement and highlight. */
+static void DrawFighter(Texture2D tex, float x, float y, float scale, bool flip, float attackTimer, float hitTimer, bool highlight)
+{
+    if (!tex.id) return;
+
+    float width = tex.width * scale;
+    float height = tex.height * scale;
+    float attackPush = 0.0f;
+
+    if (attackTimer > 0.0f)
+    {
+        float t = Clamp01(attackTimer / 0.18f);
+        attackPush = 28.0f * t;
+    }
+
+    if (flip) x += attackPush;
+    else x -= attackPush;
+
+    if (hitTimer > 0.0f)
+        x += (GetRandomValue(-4, 4));
+
+    Rectangle src = { 0, 0, (float)tex.width, (float)tex.height };
+    Rectangle dst = { x, y, flip ? -width : width, height };
+
+    if (highlight)
+        DrawCircle((int)(x + (flip ? -width * 0.5f : width * 0.5f)), (int)(y + height * 0.52f), (int)(height * 0.33f), Fade(YELLOW, 0.18f));
+
+    DrawTexturePro(tex, src, dst, (Vector2){0, 0}, 0.0f, WHITE);
+
+    if (hitTimer > 0.0f)
+    {
+        DrawRectangle((int)(x + (flip ? -width : 0.0f)), (int)y, (int)width, (int)height, Fade(WHITE, hitTimer * 0.45f));
+        DrawCircleLines((int)(x + (flip ? -width * 0.5f : width * 0.5f)), (int)(y + height * 0.45f), height * 0.24f, Fade(WHITE, hitTimer));
+        DrawCircleLines((int)(x + (flip ? -width * 0.5f : width * 0.5f)), (int)(y + height * 0.45f), height * 0.30f, Fade(WHITE, hitTimer * 0.7f));
+    }
+}
+
+static void DrawBattle(void)
+{
+    int w = GetScreenWidth();
+    int h = GetScreenHeight();
+
+    if (bg.id)
+    {
+        DrawTexturePro(bg,
+            (Rectangle){0, 0, (float)bg.width, (float)bg.height},
+            (Rectangle){0, 0, (float)w, (float)h},
+            (Vector2){0, 0}, 0.0f, WHITE);
+    }
+    else
+    {
+        DrawRectangle(0, 0, w, h, DARKGRAY);
+    }
+
+    if (battle.screenShakeTimer > 0.0f)
+    {
+        DrawRectangle(0, 0, w, h, Fade(WHITE, battle.screenShakeTimer * 0.18f));
+    }
+
+    DrawText("LEVEL 3 - ANGER", 50, 30, 34, WHITE);
+
+    bool playerTurn = (battle.turn == TURN_PLAYER) && !battle.finished;
+    bool enemyTurn = (battle.turn != TURN_PLAYER) && !battle.finished;
+
+    DrawHealthBar(55.0f, 72.0f, PLAYER_BAR_W, 48.0f, (int)(battle.shownPlayerHp + 0.5f), PLAYER_MAX_HP, "Player HP", playerTurn);
+    DrawHealthBar((float)w - ENEMY_BAR_W - 55.0f, 72.0f, ENEMY_BAR_W, 48.0f, (int)(battle.shownEnemyHp + 0.5f), ENEMY_MAX_HP, "Enemy HP", enemyTurn);
+
+    Rectangle reportBox = { w/2.0f - 250.0f, 58.0f, 500.0f, 96.0f };
+    DrawRectangleRounded(reportBox, 0.10f, 10, Fade(BLACK, 0.78f));
+    DrawRectangleRoundedLinesEx(reportBox, 0.10f, 10, 2.0f, WHITE);
+    if (battle.reportFlashTimer > 0.0f)
+        DrawRectangleRounded(reportBox, 0.10f, 10, Fade(WHITE, battle.reportFlashTimer * 0.12f));
+    DrawText("Battle Report", (int)reportBox.x + 16, (int)reportBox.y + 8, 24, WHITE);
+    DrawWrappedReport(battle.message, (int)reportBox.x + 16, (int)reportBox.y + 38, (int)reportBox.width - 32, 20);
+
+    Texture2D playerTex = (battle.playerHp <= 35) ? playerSad : playerNeutral;
+    float playerScale = 0.5f;
+float enemyScale  = 0.42f;
+
+float playerX = w * 0.18f;
+float playerY = h * 0.33f;
+
+float enemyX = w * 0.68f;
+float enemyY = h * 0.33f;
+
+    DrawFighter(playerTex, playerX, playerY, playerScale, true,
+                battle.playerAttackTimer, battle.playerHitTimer,
+                playerTurn || battle.healFlashTimer > 0.0f);
+
+    DrawFighter(enemyDevil, enemyX, enemyY, enemyScale, false,
+                battle.enemyAttackTimer, battle.enemyHitTimer,
+                enemyTurn);
+
+    if (battle.healFlashTimer > 0.0f)
+    {
+        DrawCircle((int)(w * 0.22f), (int)(h * 0.53f), 70, Fade(GREEN, battle.healFlashTimer * 0.22f));
+        DrawText("+", (int)(w * 0.22f) - 10, (int)(h * 0.53f) - 30, 60, Fade(WHITE, battle.healFlashTimer));
+    }
+
+    if (phase != PHASE_RESULT)
+        DrawChoiceBox(w, h);
+    else
+    {
+        Rectangle resultBox = { w/2.0f - 220.0f, h/2.0f + 90.0f, 440.0f, 88.0f };
+        DrawRectangleRounded(resultBox, 0.12f, 10, Fade(BLACK, 0.80f));
+        DrawRectangleRoundedLinesEx(resultBox, 0.12f, 10, 2.0f, WHITE);
+        DrawText(battle.playerWon ? "You won the fight." : "You lost the fight.", (int)resultBox.x + 95, (int)resultBox.y + 18, 28, WHITE);
+        DrawText("ENTER -> next", (int)resultBox.x + 125, (int)resultBox.y + 50, 24, YELLOW);
+    }
+}
+
+static void DrawIntroFadeOverlay(void)
+{
+    if (!introFadeActive) return;
+
+    float alpha = 1.0f - (introFadeTimer / LEVEL3_START_FADE_TIME);
+    alpha = Clamp01(alpha);
+    DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(BLACK, alpha));
 }
 
 GameState UpdateLevel3(void)
 {
-    if (!level3Initialized)
+    if (!initialized)
         InitLevel3State();
 
-    if (!level3Initialized)
-    {
-        DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), BLACK);
-        DrawText("Level 3 failed to initialize", 40, 40, 24, RED);
-        return LEVEL3;
-    }
-
-    if (level3Phase == LEVEL3_PHASE_DIALOG)
+    if (phase == PHASE_DIALOG)
     {
         EventsUpdate();
 
-        Texture2D *bg = EventsGetCurrentBackground();
-        if (bg && bg->id != 0)
-            DrawTexture(*bg, 0, 0, WHITE);
+        Texture2D *bgTex = EventsGetCurrentBackground();
+        if (bgTex && bgTex->id)
+            DrawTexture(*bgTex, 0, 0, WHITE);
         else
             DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), BLACK);
 
-        Texture2D *avatar = EventsGetCurrentAvatar();
-        if (avatar && avatar->id != 0)
+        if (introFadeActive)
         {
-            float scale = 1.5f;
-            DrawTexturePro(
-                *avatar,
-                (Rectangle){0, 0, (float)avatar->width, (float)avatar->height},
-                (Rectangle){
-                    GetScreenWidth() - avatar->width * scale - 50,
-                    GetScreenHeight() - avatar->height * scale,
-                    avatar->width * scale,
-                    avatar->height * scale
-                },
-                (Vector2){0, 0},
-                0.0f,
-                WHITE
-            );
-        }
-
-        if (waitingOnEvent && !level3Dialog.finished && !EventsBusy())
-        {
-            waitingOnEvent = false;
-            DialogResume(&level3Dialog);
-        }
-
-        if (!level3Dialog.finished)
-        {
-            if (EventsShouldBlockInput())
-                return LEVEL3;
-
-            if (!waitingOnEvent)
+            introFadeTimer += GetFrameTime();
+            if (introFadeTimer >= LEVEL3_START_FADE_TIME)
             {
-                DialogEvent ev = DialogUpdate(&level3Dialog);
+                introFadeTimer = LEVEL3_START_FADE_TIME;
+                introFadeActive = false;
+            }
+        }
 
-                if (ev != EVENT_NONE)
-                {
-                    DialogNode *node = &level3Dialog.nodes[level3Dialog.index];
-                    EventsTrigger(ev, node->backgroundId, node->avatarId, node->soundId, node->inspectId);
-                    waitingOnEvent = true;
-                }
+        if (!introFadeActive)
+        {
+            if (waitingEvent && !dialog.finished && !EventsBusy())
+            {
+                waitingEvent = false;
+                DialogResume(&dialog);
             }
 
-            if (EventsIsDialogVisible())
-                DialogDraw(&level3Dialog);
-        }
-        else
-        {
-            level3Phase = LEVEL3_PHASE_RPG;
+            if (!dialog.finished)
+            {
+                if (!waitingEvent)
+                {
+                    DialogEvent ev = DialogUpdate(&dialog);
+
+                    if (ev != EVENT_NONE)
+                    {
+                        DialogNode *n = &dialog.nodes[dialog.index];
+                        EventsTrigger(ev, n->backgroundId, n->avatarId, n->soundId, n->inspectId);
+                        waitingEvent = true;
+                    }
+                }
+
+                if (EventsIsDialogVisible())
+                    DialogDraw(&dialog);
+            }
+            else
+            {
+                phase = PHASE_BATTLE;
+
+                if (musicLoaded && !musicPlaying)
+                {
+                    PlayMusicStream(battleMusic);
+                    musicPlaying = true;
+                }
+            }
         }
 
         EventsDrawOverlay();
+        DrawIntroFadeOverlay();
         return LEVEL3;
     }
 
-    if (level3Phase == LEVEL3_PHASE_RPG)
+    if (phase == PHASE_BATTLE)
     {
+        if (musicPlaying)
+            UpdateMusicStream(battleMusic);
+
         UpdateBattle();
-        DrawBattleScene();
+        DrawBattle();
         return LEVEL3;
     }
 
-    DrawBattleScene();
-
-    if (battle.playerWon)
+    if (musicPlaying)
     {
-        DrawText("Press ENTER to ride to the next floor", GetScreenWidth()/2 - 240, 40, 28, YELLOW);
-
-        if (IsKeyPressed(KEY_ENTER))
+        UpdateMusicStream(battleMusic);
+        if (battle.shownPlayerHp == (float)battle.playerHp && battle.shownEnemyHp == (float)battle.enemyHp)
         {
-            if (battle.playerHp >= 60)
-                angerBad += 0;
-            else if (battle.playerHp >= 25)
-                angerBad += 1;
-            else
-                angerBad += 2;
-
-            nextLevel = LEVEL4;
-            level4Unlocked = 1;
-            level3Initialized = false;
-            return ELEVATOR;
+            StopMusicStream(battleMusic);
+            musicPlaying = false;
         }
     }
-    else
-    {
-        DrawText("Press ENTER to try the battle again", GetScreenWidth()/2 - 215, 40, 28, YELLOW);
 
-        if (IsKeyPressed(KEY_ENTER))
+    UpdateBattle();
+    DrawBattle();
+
+    if (IsKeyPressed(KEY_ENTER))
+    {
+        if (battle.playerWon)
         {
-            StartBattle();
-            level3Phase = LEVEL3_PHASE_RPG;
+            angerBad++;
+            nextLevel = LEVEL4;
+            initialized = false;
+            return ELEVATOR;
+        }
+        else
+        {
+            angerBad = 0;
+            nextLevel = LEVEL4;
+            initialized = false;
+            return ELEVATOR;
         }
     }
 

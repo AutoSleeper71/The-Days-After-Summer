@@ -1,14 +1,17 @@
+/* Shared game-wide state.
+   This file stores ending counters, progression flags, and the reset logic. */
+
 #include "game.h"
 #include "raylib.h"
 #include "elevator.h"
 
 // important uses of some stuff 
 
-// background music
-
+// The elevator reads this value to know which playable scene should come next.
 GameState nextLevel = LEVEL1;
 
 // count scores for ending
+// These counters are increased by player choices/minigames and later used to choose an ending.
 int angerBad = 0;
 int depressionBad = 0;
 GameState finalEnding = ENDING_GOOD;
@@ -22,6 +25,7 @@ int level4Unlocked = 0;
 
 // resetting the game
 
+/* Reset shared run data so a fresh playthrough starts from a clean state. */
 void ResetGame()
 {
     angerBad = 0;

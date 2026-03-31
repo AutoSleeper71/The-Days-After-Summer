@@ -1,3 +1,5 @@
+/* Ending scene API. */
+
 #ifndef ENDING_H
 #define ENDING_H
 

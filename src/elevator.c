@@ -1,3 +1,6 @@
+/* Elevator scene controller.
+   Works as the story hub between levels and plays the intro / transition dialogue sequences. */
+
 #include "elevator.h"
 #include "raylib.h"
 #include "game.h"
@@ -6,20 +9,28 @@
 #include <stddef.h>
 #include <string.h>
 
+// File-specific compile-time limit used to size arrays safely.
 #define MAX_ELEVATOR_NODES 100
+// Helper macro used to get the number of elements in a fixed-size array.
 #define ARRAY_COUNT(a) ((int)(sizeof(a) / sizeof((a)[0])))
 
+// Kept for future expansion; the elevator currently relies mostly on the shared event resource system.
 static bool resourcesLoaded = false;
 
+// dialog states
 static DialogState elevatorDialog;
 static DialogNode activeNodes[MAX_ELEVATOR_NODES];
 static bool waitingOnSceneEvent = false;
 
+// level states
 static bool introPlaying = true;
 static int introState = 0;
 static float introFadeAlpha = 0.0f;
 static float introEyelidTimer = 0.0f;
 
+// all dialog nodes for the intro sequence
+/* Intro script for the very first elevator sequence.
+   Each node contains speaker text, optional scene events, and the next node index. */
 static const DialogNode introTemplate[] =
 {
     // 0
@@ -236,234 +247,204 @@ static const DialogNode introTemplate[] =
      INSPECT_NONE, 0, {}, -1}
 };
 
+// intro to level 2
+
+/* Short transition script used when returning to the elevator before level 2. */
 static const DialogNode toLevel2Template[] =
 {
     {
         "Daniel",
         "The doors slide shut behind me.",
-        EVENT_CHANGE_BACKGROUND | EVENT_FADE_IN | EVENT_AVATAR_SHOW,
-        BG_INSIDE, AVATAR_NEUTRAL, SOUND_NONE,
-        INSPECT_NONE,
-        0, {}, 1
-    },
-    {
-        "Daniel",
-        "That room felt too familiar.",
-        EVENT_NONE,
-        BG_NONE, AVATAR_NONE, SOUND_NONE,
-        INSPECT_NONE,
-        2,
-        {
-            {"Take a breath", 2},
-            {"Keep staring at the floor", 3}
-        },
-        -1
-    },
-    {
-        "Daniel",
-        "I should keep moving.",
-        EVENT_NONE,
-        BG_NONE, AVATAR_NONE, SOUND_NONE,
-        INSPECT_NONE,
-        0, {}, 4
-    },
-    {
-        "Daniel",
-        "If I stop now, I will think too much.",
-        EVENT_NONE,
-        BG_NONE, AVATAR_NONE, SOUND_NONE,
-        INSPECT_NONE,
-        0, {}, 4
-    },
-    {
-        "Daniel",
-        "The elevator groans and starts again.",
-        EVENT_PLAY_SOUND | EVENT_FADE_OUT | EVENT_GO_LEVEL2,
-        BG_NONE, AVATAR_NONE, SOUND_ELEVATOR_DING,
+        EVENT_PLAY_SOUND | EVENT_GO_LEVEL2,
+        BG_INSIDE, AVATAR_NEUTRAL, SOUND_ELEVATOR_DING,
         INSPECT_NONE,
         0, {}, -1
-    }
+    },
 };
 
+/* Short transition script used when returning to the elevator before level 3. */
 static const DialogNode toLevel3Template[] =
 {
     {
         "Narration",
-        "You told yourself you're okay now.",
-        EVENT_AVATAR_SHOW,
-        BG_NONE, AVATAR_NEUTRAL, SOUND_NONE,
-        INSPECT_NONE,
-        0, {}, 1
-    },
-    {
-        "Narration",
-        "You let her go.",
-        EVENT_NONE,
-        BG_NONE, AVATAR_NONE, SOUND_NONE,
-        INSPECT_NONE,
-        0, {}, 2
-    },
-    {
-        "Narration",
-        "You gave her your blessing.",
-        EVENT_NONE,
-        BG_NONE, AVATAR_NONE, SOUND_NONE,
-        INSPECT_NONE,
-        0, {}, 3
-    },
-    {
-        "Narration",
-        "But it clings on, like a curse.",
-        EVENT_PLAY_SOUND,
-        BG_NONE, AVATAR_NONE, SOUND_RUMBLE,
-        INSPECT_NONE,
-        0, {}, 4
-    },
-    {
-        "Narration",
-        "A deep pain grows and festers.",
-        EVENT_NONE,
-        BG_NONE, AVATAR_NONE, SOUND_NONE,
-        INSPECT_NONE,
-        0, {}, 5
-    },
-    {
-        "Narration",
-        "A pain you have never been able to come to terms with before.",
-        EVENT_STOP_SOUNDS,
-        BG_NONE, AVATAR_NONE, SOUND_RUMBLE,
-        INSPECT_NONE,
-        0, {}, 6
-    },
-    {
-        "Narration",
-        "Suddenly, you feel your phone buzz.",
-        EVENT_PLAY_SOUND,
-        BG_NONE, AVATAR_NONE, SOUND_TALKING,
-        INSPECT_NONE,
-        0, {}, 7
-    },
-    {
-        "Him",
-        "...Hello?",
-        EVENT_STOP_SOUNDS,
-        BG_NONE, AVATAR_NONE, SOUND_TALKING,
-        INSPECT_NONE,
-        0, {}, 8
-    },
-    {
-        "Narration",
-        "A familiar and friendly voice answers.",
-        EVENT_NONE,
-        BG_NONE, AVATAR_NONE, SOUND_NONE,
-        INSPECT_NONE,
-        0, {}, 9
-    },
-    {
-        "Friend",
-        "Hellooo!",
-        EVENT_NONE,
-        BG_NONE, AVATAR_NONE, SOUND_NONE,
-        INSPECT_NONE,
-        0, {}, 10
-    },
-    {
-        "Friend",
-        "Ever since the break up we haven't been able to contact you for so long, are you okay?",
-        EVENT_NONE,
-        BG_NONE, AVATAR_NONE, SOUND_NONE,
-        INSPECT_NONE,
-        0, {}, 11
-    },
-    {
-        "Him",
-        "(......)",
-        EVENT_NONE,
-        BG_NONE, AVATAR_NONE, SOUND_NONE,
-        INSPECT_NONE,
-        0, {}, 12
-    },
-    {
-        "Narration",
-        "You say nothing.",
-        EVENT_NONE,
-        BG_NONE, AVATAR_NONE, SOUND_NONE,
-        INSPECT_NONE,
-        0, {}, 13
-    },
-    {
-        "Narration",
-        "The silence stretches.",
-        EVENT_NONE,
-        BG_NONE, AVATAR_NONE, SOUND_NONE,
-        INSPECT_NONE,
-        0, {}, 14
-    },
-    {
-        "Narration",
-        "It feels unbearable from the other side.",
-        EVENT_NONE,
-        BG_NONE, AVATAR_NONE, SOUND_NONE,
-        INSPECT_NONE,
-        0, {}, 15
-    },
-    {
-        "Narration",
-        "...",
-        EVENT_NONE,
-        BG_NONE, AVATAR_NONE, SOUND_NONE,
-        INSPECT_NONE,
-        0, {}, 16
-    },
-    {
-        "Him",
-        "...Hello?",
-        EVENT_NONE,
-        BG_NONE, AVATAR_NONE, SOUND_NONE,
-        INSPECT_NONE,
-        0, {}, 17
-    },
-    {
-        "Him",
-        "I'm going to see her again.",
-        EVENT_NONE,
-        BG_NONE, AVATAR_NONE, SOUND_NONE,
-        INSPECT_NONE,
-        0, {}, 18
-    },
-    {
-        "Narration",
-        "Your heart drops, a deep anxiety rising within you.",
-        EVENT_PLAY_SOUND | EVENT_SHAKE_SCREEN,
-        BG_NONE, AVATAR_NONE, SOUND_RUMBLE,
-        INSPECT_NONE,
-        0, {}, 19
-    },
-    {
-        "Narration",
-        "Despite leaving you in the dark for so long,",
-        EVENT_NONE,
-        BG_NONE, AVATAR_NONE, SOUND_NONE,
-        INSPECT_NONE,
-        0, {}, 20
-    },
-    {
-        "Narration",
-        "Maybe it is time to help?",
-        EVENT_PLAY_SOUND | EVENT_FADE_OUT | EVENT_GO_LEVEL3,
-        BG_NONE, AVATAR_NONE, SOUND_ELEVATOR_DING,
+        "I should have been able to let her go.",
+        EVENT_GO_LEVEL3 | EVENT_PLAY_SOUND,
+        BG_NONE, AVATAR_NEUTRAL, SOUND_ELEVATOR_DING,
         INSPECT_NONE,
         0, {}, -1
-    }
+     },
+    // {
+    //     "Narration",
+    //     "You let her go.",
+    //     EVENT_NONE,
+    //     BG_NONE, AVATAR_NONE, SOUND_NONE,
+    //     INSPECT_NONE,
+    //     0, {}, 2
+    // },
+    // {
+    //     "Narration",
+    //     "You gave her your blessing.",
+    //     EVENT_NONE,
+    //     BG_NONE, AVATAR_NONE, SOUND_NONE,
+    //     INSPECT_NONE,
+    //     0, {}, 3
+    // },
+    // {
+    //     "Narration",
+    //     "But it clings on, like a curse.",
+    //     EVENT_PLAY_SOUND,
+    //     BG_NONE, AVATAR_NONE, SOUND_RUMBLE,
+    //     INSPECT_NONE,
+    //     0, {}, 4
+    // },
+    // {
+    //     "Narration",
+    //     "A deep pain grows and festers.",
+    //     EVENT_NONE,
+    //     BG_NONE, AVATAR_NONE, SOUND_NONE,
+    //     INSPECT_NONE,
+    //     0, {}, 5
+    // },
+    // {
+    //     "Narration",
+    //     "A pain you have never been able to come to terms with before.",
+    //     EVENT_STOP_SOUNDS,
+    //     BG_NONE, AVATAR_NONE, SOUND_RUMBLE,
+    //     INSPECT_NONE,
+    //     0, {}, 6
+    // },
+    // {
+    //     "Narration",
+    //     "Suddenly, you feel your phone buzz.",
+    //     EVENT_PLAY_SOUND,
+    //     BG_NONE, AVATAR_NONE, SOUND_TALKING,
+    //     INSPECT_NONE,
+    //     0, {}, 7
+    // },
+    // {
+    //     "Him",
+    //     "...Hello?",
+    //     EVENT_STOP_SOUNDS,
+    //     BG_NONE, AVATAR_NONE, SOUND_TALKING,
+    //     INSPECT_NONE,
+    //     0, {}, 8
+    // },
+    // {
+    //     "Narration",
+    //     "A familiar and friendly voice answers.",
+    //     EVENT_NONE,
+    //     BG_NONE, AVATAR_NONE, SOUND_NONE,
+    //     INSPECT_NONE,
+    //     0, {}, 9
+    // },
+    // {
+    //     "Friend",
+    //     "Hellooo!",
+    //     EVENT_NONE,
+    //     BG_NONE, AVATAR_NONE, SOUND_NONE,
+    //     INSPECT_NONE,
+    //     0, {}, 10
+    // },
+    // {
+    //     "Friend",
+    //     "Ever since the break up we haven't been able to contact you for so long, are you okay?",
+    //     EVENT_NONE,
+    //     BG_NONE, AVATAR_NONE, SOUND_NONE,
+    //     INSPECT_NONE,
+    //     0, {}, 11
+    // },
+    // {
+    //     "Him",
+    //     "(......)",
+    //     EVENT_NONE,
+    //     BG_NONE, AVATAR_NONE, SOUND_NONE,
+    //     INSPECT_NONE,
+    //     0, {}, 12
+    // },
+    // {
+    //     "Narration",
+    //     "You say nothing.",
+    //     EVENT_NONE,
+    //     BG_NONE, AVATAR_NONE, SOUND_NONE,
+    //     INSPECT_NONE,
+    //     0, {}, 13
+    // },
+    // {
+    //     "Narration",
+    //     "The silence stretches.",
+    //     EVENT_NONE,
+    //     BG_NONE, AVATAR_NONE, SOUND_NONE,
+    //     INSPECT_NONE,
+    //     0, {}, 14
+    // },
+    // {
+    //     "Narration",
+    //     "It feels unbearable from the other side.",
+    //     EVENT_NONE,
+    //     BG_NONE, AVATAR_NONE, SOUND_NONE,
+    //     INSPECT_NONE,
+    //     0, {}, 15
+    // },
+    // {
+    //     "Narration",
+    //     "...",
+    //     EVENT_NONE,
+    //     BG_NONE, AVATAR_NONE, SOUND_NONE,
+    //     INSPECT_NONE,
+    //     0, {}, 16
+    // },
+    // {
+    //     "Him",
+    //     "...Hello?",
+    //     EVENT_NONE,
+    //     BG_NONE, AVATAR_NONE, SOUND_NONE,
+    //     INSPECT_NONE,
+    //     0, {}, 17
+    // },
+    // {
+    //     "Him",
+    //     "I'm going to see her again.",
+    //     EVENT_NONE,
+    //     BG_NONE, AVATAR_NONE, SOUND_NONE,
+    //     INSPECT_NONE,
+    //     0, {}, 18
+    // },
+    // {
+    //     "Narration",
+    //     "Your heart drops, a deep anxiety rising within you.",
+    //     EVENT_PLAY_SOUND | EVENT_SHAKE_SCREEN,
+    //     BG_NONE, AVATAR_NONE, SOUND_RUMBLE,
+    //     INSPECT_NONE,
+    //     0, {}, 19
+    // },
+    // {
+    //     "Narration",
+    //     "Despite leaving you in the dark for so long,",
+    //     EVENT_NONE,
+    //     BG_NONE, AVATAR_NONE, SOUND_NONE,
+    //     INSPECT_NONE,
+    //     0, {}, 20
+    // },
+    // {
+    //     "Narration",
+    //     "Maybe it is time to help?",
+    //     EVENT_PLAY_SOUND | EVENT_FADE_OUT | EVENT_GO_LEVEL3,
+    //     BG_NONE, AVATAR_NONE, SOUND_ELEVATOR_DING,
+    //     INSPECT_NONE,
+    //     0, {}, -1
+    // }
 };
 
+// dialog before level 4
+
+/* Transition script used when returning to the elevator before level 4. */
 static const DialogNode toLevel4Template[] =
 {
     {
         "Daniel",
         "It is quieter now.",
-        EVENT_CHANGE_BACKGROUND | EVENT_FADE_IN | EVENT_AVATAR_SHOW,
-        BG_INSIDE, AVATAR_NEUTRAL, SOUND_NONE,
+        EVENT_CHANGE_BACKGROUND | EVENT_FADE_IN | EVENT_AVATAR_SHOW | EVENT_PLAY_SOUND,
+        BG_INSIDE, AVATAR_NEUTRAL, SOUND_ELEVATOR_SCARY,
         INSPECT_NONE,
         0, {}, 1
     },
@@ -491,8 +472,8 @@ static const DialogNode toLevel4Template[] =
     {
         "Daniel",
         "Maybe there is nothing left to say.",
-        EVENT_NONE,
-        BG_NONE, AVATAR_NONE, SOUND_NONE,
+        EVENT_STOP_SOUNDS,
+        BG_NONE, AVATAR_NONE, SOUND_ELEVATOR_SCARY,
         INSPECT_NONE,
         0, {}, 4
     },
@@ -506,13 +487,15 @@ static const DialogNode toLevel4Template[] =
     }
 };
 
+// dialog before endings
+
 static const DialogNode endingTemplate[] =
 {
     {
         "Daniel",
         "This is the last ride.",
-        EVENT_CHANGE_BACKGROUND | EVENT_FADE_IN | EVENT_AVATAR_SHOW,
-        BG_INSIDE, AVATAR_NEUTRAL, SOUND_NONE,
+        EVENT_CHANGE_BACKGROUND | EVENT_FADE_IN | EVENT_AVATAR_SHOW | EVENT_PLAY_SOUND,
+        BG_INSIDE, AVATAR_NEUTRAL, SOUND_ELEVATOR_SCARY,
         INSPECT_NONE,
         0, {}, 1
     },
@@ -534,6 +517,7 @@ static const DialogNode endingTemplate[] =
     }
 };
 
+// Utility functions
 static void CopyScript(const DialogNode *src, int count)
 {
     if(count > MAX_ELEVATOR_NODES) count = MAX_ELEVATOR_NODES;
@@ -553,6 +537,8 @@ static void LoadScriptForNextLevel(void)
     else
         CopyScript(endingTemplate, ARRAY_COUNT(endingTemplate));
 }
+
+// INIT
 
 void InitElevator(void)
 {
@@ -622,23 +608,22 @@ GameState UpdateElevator(void)
 
     EventsUpdate();
 
-    /* ALWAYS check transition first */
     if(EventsConsumeTransition(&requestedState))
         return requestedState;
 
-    /* THEN handle waiting */
     if(waitingOnSceneEvent && !EventsBusy())
     {
         waitingOnSceneEvent = false;
         DialogResume(&elevatorDialog);
     }
+
     shake = EventsGetShakeOffset();
     bg = EventsGetCurrentBackground();
 
-if(bg != NULL && bg->id != 0)
-    DrawTexture(*bg, (int)shake.x, (int)shake.y, WHITE);
-else
-    DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), BLACK);
+    if(bg != NULL && bg->id != 0)
+        DrawTexture(*bg, (int)shake.x, (int)shake.y, WHITE);
+    else
+        DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), BLACK);
 
     avatar = EventsGetCurrentAvatar();
 
@@ -693,8 +678,3 @@ else
     return ELEVATOR;
 }
 
-void UnloadElevator(void)
-{
-    // Resources are now owned by events.c
-    // Nothing to unload here
-}

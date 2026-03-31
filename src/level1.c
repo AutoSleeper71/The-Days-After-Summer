@@ -1,3 +1,6 @@
+/* Level 1 scene logic.
+   Builds the dialogue script for the first memory and runs its intro, events, and transitions. */
+
 #include "level1.h"
 #include "raylib.h"
 #include "game.h"
@@ -7,20 +10,28 @@
 #include <string.h>
 #include <stdbool.h>
 
+// Helper macro used to get the number of elements in a fixed-size array.
 #define ARRAY_COUNT(a) ((int)(sizeof(a) / sizeof((a)[0])))
+// File-specific compile-time limit used to size arrays safely.
 #define MAX_LEVEL1_NODES 220
+#define LEVEL1_START_FADE_TIME 2.0f
 
 static bool level1Initialized = false;
 static DialogState level1Dialog;
 static DialogNode activeNodes[MAX_LEVEL1_NODES];
 static bool waitingOnEvent = false;
+static bool introFadeActive = false;
+static float introFadeTimer = 0.0f;
 
+/* Copy the level script into a writable array.
+   Dialogue nodes are copied because some event flags are cleared after first use. */
 static void CopyScript(const DialogNode *src, int count)
 {
     if (count > MAX_LEVEL1_NODES) count = MAX_LEVEL1_NODES;
     memcpy(activeNodes, src, sizeof(DialogNode) * count);
 }
 
+/* Helper used to decide which portrait should be shown for a given dialogue line. */
 static bool IsProtagonistSpeaker(const char *speaker)
 {
     return (strcmp(speaker, "You") == 0) ||
@@ -42,6 +53,8 @@ static int AvatarForSpeaker(const char *speaker)
 }
 
 /* preload only the NEXT avatar show so there are no blank avatar-change lines */
+/* Preload the avatar that will speak next.
+   This avoids a blank frame when the speaker changes. */
 static void ApplyAvatarPreload(DialogNode *nodes, int count)
 {
     for (int i = 0; i < count - 1; i++)
@@ -62,6 +75,7 @@ static void ApplyAvatarPreload(DialogNode *nodes, int count)
     }
 }
 
+/* Basic safety check so broken node indices are caught early instead of causing crashes. */
 static bool ValidateScript(const DialogNode *nodes, int count)
 {
     for (int i = 0; i < count; i++)
@@ -82,24 +96,26 @@ static bool ValidateScript(const DialogNode *nodes, int count)
     return true;
 }
 
+/* Level 1 narrative script.
+   The comments inside the array split the level into story scenes. */
 static const DialogNode level1Template[] =
 {
     /* =========================
        SCENE 0 – ELEVATOR
        ========================= */
 
-    { "Narration", "You take a moment to catch your breath, slowly coming back to your senses.", EVENT_FADE_IN, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 1 },
+    { "Narration", "You take a moment to catch your breath, slowly coming back to your senses.", EVENT_PLAY_SOUND, BG_NONE, AVATAR_NONE, SOUND_ELEVATOR_SCARY, INSPECT_NONE, 0, {}, 1 },
     { "You", "God... That was really close...", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 2 },
     { "Narration", "But before you can fully recover from that experience,", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 3 },
-    { "Narration", "The elevator suddenly groans, and comes to a stop.", EVENT_SHAKE_SCREEN | EVENT_CHANGE_BACKGROUND | EVENT_FADE_IN, BG_L1_DINER, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 4 },
+    { "Narration", "The elevator suddenly groans, and comes to a stop.", EVENT_SHAKE_SCREEN | EVENT_CHANGE_BACKGROUND | EVENT_FADE_IN | EVENT_STOP_SOUNDS, BG_L1_DINER, AVATAR_NONE, SOUND_ELEVATOR_SCARY, INSPECT_NONE, 0, {}, 4 },
 
     /* =========================
        SCENE 1 – DINER
        ========================= */
 
-    { "Narration", "Warm light floods the cold elevator, the familiar aroma of food and vanilla fill the air, replacing the staleness of the elevator with the smell of a well-known comfort.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 5 },
+    { "Narration", "Warm light floods the cold elevator, the familiar aroma of food and vanilla fill the air, replacing the staleness of the elevator with the smell of a well-known comfort.", EVENT_PLAY_SOUND, BG_NONE, AVATAR_NONE, SOUND_TALKING, INSPECT_NONE, 0, {}, 5 },
     { "Narration", "Friends laugh. Couples chat. Families eat.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 6 },
-    { "You", "What is this place?", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 7 },
+    { "You", "What is this place?", EVENT_PLAY_SOUND, BG_NONE, AVATAR_NONE, SOUND_ELEVATOR, INSPECT_NONE, 0, {}, 7 },
     { "Narration", "Welcome to your memories, Daniel.", EVENT_AVATAR_HIDE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 8 },
     { "Narration", "A voice inserts itself into the crevices of your brain, as if it's your own very thoughts talking right to you.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 9 },
     { "Narration", "You spin in confusion. There is no one there.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 10 },
@@ -110,7 +126,7 @@ static const DialogNode level1Template[] =
     { "Narration", "This is something you buried deep within. A memory you refused to remember.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 15 },
     { "Narration", "You will face the memories you have run away from.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 16 },
     { "Narration", "You cannot change your past.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 17 },
-    { "Narration", "But you can change your future.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 18 },
+    { "Narration", "But you can change your future.", EVENT_PLAY_SOUND, BG_NONE, AVATAR_NONE, SOUND_TALKING, INSPECT_NONE, 0, {}, 18 },
     { "Narration", "Suddenly, you feel an eerie presence slip through the base of your skull.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 19 },
     { "Narration", "The sounds of the diner rush back, covering you in a blanket of warmth and comfort.", EVENT_CHANGE_BACKGROUND | EVENT_FADE_IN, BG_L1_DINER_BOOTH, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 20 },
     { "Narration", "Suddenly a wave of realization crashes over you, unlocking memories buried deep below.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 21 },
@@ -123,7 +139,7 @@ static const DialogNode level1Template[] =
     { "You", "You know with all of my smartness, I thought that I had everything figured out.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 28 },
     { "You", "I really didn't.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 29 },
     { "Narration", "Then, a voice behind you.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 30 },
-    { "Her", "Is this seat taken?", EVENT_NONE, BG_NONE, AVATAR_GIRL_HAPPY, SOUND_NONE, INSPECT_NONE, 0, {}, 31 },
+    { "Her", "Is this seat taken?", EVENT_PLAY_SOUND, BG_NONE, AVATAR_GIRL_HAPPY, SOUND_ELEVATOR_DING, INSPECT_NONE, 0, {}, 31 },
     { "Narration", "You freeze, and slowly turn around.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 32 },
     { "Narration", "She stands there. Simple. Colorful. Beautiful.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 33 },
     { "Narration", "A polka-dot dress. Bright blue eyes. And a soft, effortless smile.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 34 },
@@ -180,15 +196,15 @@ static const DialogNode level1Template[] =
     { "Narration", "You suddenly are reminded why you came here in the first place,", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 63 },
     { "Narration", "to grab some food.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 64 },
     { "You", "Ah! Right then, let's see here……", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 65 },
-    { "Narration", "You glance at several options.", EVENT_INSPECT_START, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_L1_DINER_MENU, 0, {}, 66 },
+    { "Narration", "You glance at several options.", EVENT_INSPECT_START | EVENT_STOP_SOUNDS, BG_NONE, AVATAR_NONE, SOUND_TALKING, INSPECT_L1_DINER_MENU, 0, {}, 66 },
 
-    { "Narration", "Suddenly, the whole diner becomes quiet.", EVENT_CHANGE_BACKGROUND | EVENT_FADE_IN | EVENT_STOP_SOUNDS | EVENT_AVATAR_HIDE, BG_L1_DINER_EMPTY, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 67 },
+    { "Narration", "Suddenly, the whole diner becomes quiet.", EVENT_CHANGE_BACKGROUND | EVENT_FADE_IN | EVENT_PLAY_SOUND | EVENT_AVATAR_HIDE, BG_L1_DINER_EMPTY, AVATAR_NONE, SOUND_ELEVATOR_SCARY, INSPECT_NONE, 0, {}, 67 },
     { "Narration", "The lights are turned off.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 68 },
     { "Narration", "The chairs are on the tables.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 69 },
     { "Narration", "She is no longer there anymore.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 70 },
     { "Narration", "Beginnings are easy to remember.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 71 },
     { "Narration", "Endings are harder.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 72 },
-    { "Narration", "The diner lights flicker.", EVENT_CHANGE_BACKGROUND | EVENT_FADE_IN, BG_L1_PARK, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 73 },
+    { "Narration", "The diner lights flicker.", EVENT_CHANGE_BACKGROUND | EVENT_FADE_IN | EVENT_PLAY_SOUND, BG_L1_PARK, AVATAR_NONE, SOUND_PARK, INSPECT_NONE, 0, {}, 73 },
 
     /* =========================
        SCENE 2 – PARK
@@ -264,8 +280,8 @@ static const DialogNode level1Template[] =
     { "Narration", "She makes a slight grin.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 129 },
     { "Her", "Oh shut up! In that case, I'll be failing you right here, right now just for your disrespect!", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 130 },
     { "Narration", "You both laugh into the evening sky.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 131 },
-    { "Her", "Anyways, to summarize, sometimes, I feel like it's best to just…..", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 132 },
-    { "Narration", "Take it slow.", EVENT_SHOW_CARD, BG_NONE, AVATAR_NONE, SOUND_NONE, CARD_L1_SLOW, 0, {}, 133 },
+    { "Her", "Anyways, to summarize, sometimes, I feel like it's best to just…..", EVENT_NONE | EVENT_STOP_SOUNDS, BG_NONE, AVATAR_NONE, SOUND_PARK, INSPECT_NONE, 0, {}, 132 },
+    { "Narration", "Take it slow.", EVENT_SHOW_CARD | EVENT_PLAY_SOUND, BG_NONE, AVATAR_NONE, SOUND_ELEVATOR_SCARY, CARD_L1_SLOW, 0, {}, 133 },
 
     { "Narration", "She is gone.", EVENT_CHANGE_BACKGROUND | EVENT_FADE_IN | EVENT_AVATAR_HIDE, BG_L1_PARK_EMPTY, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 134 },
     { "Narration", "Silence.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 135 },
@@ -278,10 +294,11 @@ static const DialogNode level1Template[] =
     { "Narration", "But now you know what happened.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 142 },
     { "Narration", "It was a letter you were never supposed to write.", EVENT_SHOW_CARD, BG_NONE, AVATAR_NONE, SOUND_NONE, CARD_L1_LETTER, 0, {}, 143 },
     { "Narration", "Suddenly you feel that same presence, bury itself in your head.", EVENT_AVATAR_HIDE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 144 },
-    { "Narration", "Now you remember how the story ends.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 145 },
+    { "Narration", "Now you remember how the story ends.", EVENT_NONE | EVENT_STOP_SOUNDS, BG_NONE, AVATAR_NONE, SOUND_ELEVATOR_SCARY, INSPECT_NONE, 0, {}, 145 },
     { "Narration", "Remember now why it ended.", EVENT_EYES_CLOSE | EVENT_DIALOG_HIDE | EVENT_AVATAR_HIDE | EVENT_GO_LEVEL2, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, -1 }
 };
 
+/* Build runtime data for level 1 and apply a short manual fade before dialogue begins. */
 static void InitLevel1State(void)
 {
     int count = ARRAY_COUNT(level1Template);
@@ -301,6 +318,10 @@ static void InitLevel1State(void)
     }
 
     DialogStart(&level1Dialog, activeNodes);
+
+    introFadeActive = true;
+    introFadeTimer = 0.0f;
+
     level1Initialized = true;
 }
 
@@ -355,7 +376,24 @@ GameState UpdateLevel1(void)
         );
     }
 
-    if (waitingOnEvent && !level1Dialog.finished && !EventsBusy())
+    if (introFadeActive)
+    {
+        introFadeTimer += GetFrameTime();
+
+        float fadeAlpha = 1.0f - (introFadeTimer / LEVEL1_START_FADE_TIME);
+        if (fadeAlpha < 0.0f) fadeAlpha = 0.0f;
+
+        DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(BLACK, fadeAlpha));
+
+        if (introFadeTimer >= LEVEL1_START_FADE_TIME)
+            introFadeActive = false;
+
+        EventsDrawOverlay();
+        return LEVEL1;
+    }
+
+    // Once the event system has finished its animation/overlay, dialogue can continue from the next node.
+        if (waitingOnEvent && !level1Dialog.finished && !EventsBusy())
     {
         waitingOnEvent = false;
         DialogResume(&level1Dialog);

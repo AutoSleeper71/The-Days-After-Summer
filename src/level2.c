@@ -1,3 +1,6 @@
+/* Level 2 scene logic.
+   Replays the relationship memory with different emotional beats and branching responses. */
+
 #include "level2.h"
 #include "raylib.h"
 #include "game.h"
@@ -7,14 +10,20 @@
 #include <string.h>
 #include <stdbool.h>
 
+// Helper macro used to get the number of elements in a fixed-size array.
 #define ARRAY_COUNT(a) ((int)(sizeof(a) / sizeof((a)[0])))
+// File-specific compile-time limit used to size arrays safely.
 #define MAX_LEVEL2_NODES 220
+#define LEVEL2_START_FADE_TIME 2.0f
 
 static bool level2Initialized = false;
 static DialogState level2Dialog;
 static DialogNode activeNodes[MAX_LEVEL2_NODES];
 static bool waitingOnEvent = false;
+static bool introFadeActive = false;
+static float introFadeTimer = 0.0f;
 
+/* Copy the level 2 template into a writable runtime buffer. */
 static void CopyScript(const DialogNode *src, int count)
 {
     if (count > MAX_LEVEL2_NODES) count = MAX_LEVEL2_NODES;
@@ -40,6 +49,7 @@ static int AvatarForSpeaker(const char *speaker)
 }
 
 /* preload only the NEXT avatar show so there are no blank avatar nodes */
+/* Preload the next speaking portrait to keep the scene visually smooth. */
 static void ApplyAvatarPreload(DialogNode *nodes, int count)
 {
     for (int i = 0; i < count - 1; i++)
@@ -60,6 +70,7 @@ static void ApplyAvatarPreload(DialogNode *nodes, int count)
     }
 }
 
+/* Guard against invalid next-node indices in the large branching script. */
 static bool ValidateScript(const DialogNode *nodes, int count)
 {
     for (int i = 0; i < count; i++)
@@ -80,12 +91,14 @@ static bool ValidateScript(const DialogNode *nodes, int count)
     return true;
 }
 
+/* Level 2 narrative script.
+   This level focuses on the break-up memory and player responses to it. */
 static const DialogNode level2Template[] =
 {
 
 
     { "Narration", "A pit of dread fills your stomach...",
-      EVENT_FADE_IN, BG_NONE, AVATAR_NONE, SOUND_NONE,
+      EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE,
       INSPECT_NONE, 0, {}, 1 },
 
     { "Narration", "You reflect on the words that came from that strange voice.",
@@ -110,7 +123,7 @@ static const DialogNode level2Template[] =
        ========================= */
 
     { "You", "Oh, I'm here again?",
-      EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE,
+      EVENT_PLAY_SOUND, BG_NONE, AVATAR_NONE, SOUND_TALKING,
       INSPECT_NONE, 0, {}, 6 },
 
     { "Narration", "Same familiar aroma, same calm lighting, same ambience.",
@@ -170,7 +183,7 @@ static const DialogNode level2Template[] =
       INSPECT_NONE, 0, {}, 20 },
 
     { "Her", "What is this?",
-      EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE,
+      EVENT_STOP_SOUNDS, BG_NONE, AVATAR_NONE, SOUND_TALKING,
       INSPECT_NONE, 0, {}, 21 },
 
     { "Narration", "Her voice is quieter than you remember.",
@@ -178,7 +191,7 @@ static const DialogNode level2Template[] =
       INSPECT_NONE, 0, {}, 22 },
 
     { "Her", "You know how much I hate this... right?",
-      EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE,
+      EVENT_PLAY_SOUND, BG_NONE, AVATAR_NONE, SOUND_ELEVATOR_SCARY,
       INSPECT_NONE, 0, {}, 23 },
 
     { "Narration", "Memories surge through your head, echoing events that happened exactly like this.",
@@ -549,6 +562,7 @@ static const DialogNode level2Template[] =
       INSPECT_NONE, 0, {}, -1 }
 };
 
+/* Build runtime data for level 2 and reset shared scene effects. */
 static void InitLevel2State(void)
 {
     int count = ARRAY_COUNT(level2Template);
@@ -568,6 +582,10 @@ static void InitLevel2State(void)
     }
 
     DialogStart(&level2Dialog, activeNodes);
+
+    introFadeActive = true;
+    introFadeTimer = 0.0f;
+
     level2Initialized = true;
 }
 
@@ -621,6 +639,22 @@ GameState UpdateLevel2(void)
             0.0f,
             WHITE
         );
+    }
+
+    if (introFadeActive)
+    {
+        introFadeTimer += GetFrameTime();
+
+        float fadeAlpha = 1.0f - (introFadeTimer / LEVEL2_START_FADE_TIME);
+        if (fadeAlpha < 0.0f) fadeAlpha = 0.0f;
+
+        DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(BLACK, fadeAlpha));
+
+        if (introFadeTimer >= LEVEL2_START_FADE_TIME)
+            introFadeActive = false;
+
+        EventsDrawOverlay();
+        return LEVEL2;
     }
 
     if (waitingOnEvent && !level2Dialog.finished && !EventsBusy())

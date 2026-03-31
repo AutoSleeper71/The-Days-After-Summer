@@ -1,7 +1,11 @@
+/* Shared scene event system.
+   Centralizes backgrounds, avatars, overlays, sounds, transitions, fade effects, and inspect menus. */
+
 #include "events.h"
 #include <stddef.h>
 #include <string.h>
 
+// These pointers always describe what the current scene should draw right now.
 static Texture2D *currentBG = NULL;
 static Texture2D *currentAvatar = NULL;
 static Texture2D *currentInspectTexture = NULL;
@@ -10,6 +14,7 @@ static bool resourcesLoaded = false;
 static bool dialogVisible = true;
 static bool blockInput = false;
 
+// Internal transition modes used by the event system when moving between scenes.
 typedef enum { TRANS_NONE, TRANS_SLIDE, TRANS_FLASH } TransitionMode;
 static TransitionMode transitionMode = TRANS_NONE;
 static float transitionTimer = 0.0f;
@@ -28,6 +33,8 @@ static float eyeClosedAmount = 0.0f;
 static bool transitionPending = false;
 static GameState pendingState = MENU;
 
+// all the resources used by events, loaded at the start of the game and freed at the end
+
 static Texture2D bgOutside, bgInside, bgRoom, bgBathroom, bgLobby;
 static Texture2D bgNeutralEnding, bgHappyEnding, bgBadEnding;
 static Texture2D bgL1Diner, bgL1Booth, bgL1Her, bgL1DinerEmpty, bgL1Park, bgL1ParkEmpty, bgL1Hospital;
@@ -35,10 +42,15 @@ static Texture2D bgL2Diner, bgL2Booth;
 static Texture2D avatarNeutral, avatarConfused, avatarSad, avatarGirlHappy, avatarGirlDisappointed;
 static Texture2D imgMirror, imgToothbrush, imgDuck;
 static Sound sndMirror, sndToothbrush, sndDuck;
-static Sound sndDing, sndRumble, sndScary, sndElevator, sndLight, sndTalking;
+static Sound sndDing, sndRumble, sndScary, sndElevator, sndLight, sndTalking, sndPark, sndCall;
+static Sound sndGoodEnd, sndNeutEnd;
 static Texture2D imgSpaghetti, imgSteak, imgBurger, imgLetter;
 static Texture2D imgSandwich, imgLemonade;
 
+// inspecting system
+
+/* Generic data bundle for inspect-style overlays.
+   One struct can describe different inspect menus without duplicating code. */
 typedef struct
 {
     const char **items;
@@ -55,22 +67,67 @@ static int menuIndex = 0;
 static bool showingDesc = false;
 static Texture2D *savedAvatar = NULL;
 
+// bathroom inspection
+
 static const char *bathroomItems[] = { "Mirror", "Toothbrush", "Rubber Duck" };
 static const char *bathroomDesc[] = {
     "Your reflection looks tired.",
     "An old toothbrush. Replace it.",
     "A worn-out rubber duck."
 };
+
 static Texture2D *bathroomImages[] = { &imgMirror, &imgToothbrush, &imgDuck };
 static Sound *bathroomSounds[] = { &sndMirror, &sndToothbrush, &sndDuck };
 static bool bathroomChecked[] = { false, false, false };
+
+// DINER INSPECTION
+
+static const char *dinerItems[] = {
+    "Spaghetti Bolognese",
+    "Ribeye Steak",
+    "Beef Burger",
+    "Crumpled Letter"
+};
+
+static const char *dinerDesc[] = {
+    "The spaghetti here is really good, always cooked al-dente, but its portion sizes are tiny.",
+    "Steak here is pretty decent, but that price is just a little too much for 'decent'",
+    "A good burger with a very large size. The problem is I am wearing a white suit. Not the best option for someone liable to such a mess.",
+    "This shouldn't be here."
+};
+
+static Texture2D *dinerImages[] = {
+    &imgSpaghetti, &imgSteak, &imgBurger, &imgLetter
+};
+
+static bool dinerChecked[4] = { false };
+
+// BASKET INSPECTION
+
+static const char *basketItems[] = {
+    "Cheese Sandwich",
+    "Bottle of Lemonade",
+    "Crumpled Letter"
+};
+
+static const char *basketDesc[] = {
+    "A perfect blend of seasoning and ingredients which genuinely surprises you. ",
+    "All the muscles in your face and neck contract at the same time, in response to the extreme 'flavor'.",
+    "Same strange letter..."
+};
+
+static Texture2D *basketImages[] = {
+    &imgSandwich, &imgLemonade, &imgLetter
+};
+
+static bool basketChecked[3] = { false };
+
+// custom overlay (card && letter)
 
 typedef enum
 {
     CUSTOM_NONE = 0,
     CUSTOM_CARD,
-    CUSTOM_L1_DINER_MENU,
-    CUSTOM_L1_PARK_BASKET,
     CUSTOM_L2_LETTER
 } CustomOverlayMode;
 
@@ -80,10 +137,9 @@ static int customSelected = 0;
 static bool customMessageActive = false;
 static const char *customMessageTitle = NULL;
 static const char *customMessageBody = NULL;
-static bool l1DinerChecked[4] = { false, false, false, false };
-static bool l1BasketChecked[3] = { false, false, false };
 static bool l2LetterChecked = false;
 
+/* Lightweight text wrapper used by inspect overlays and custom popups. */
 static void DrawWrappedTextSimple(const char *text, float x, float y, float maxWidth, float fontSize, float spacing, Color color)
 {
     Font font = GetFontDefault();
@@ -129,6 +185,8 @@ static void DrawWrappedTextSimple(const char *text, float x, float y, float maxW
     }
 }
 
+/* Safe asset loader.
+   Returns a zeroed texture if the file is missing so the game fails more gracefully. */
 static bool FileLoadTexture(Texture2D *out, const char *path)
 {
     if (!FileExists(path))
@@ -140,6 +198,7 @@ static bool FileLoadTexture(Texture2D *out, const char *path)
     return true;
 }
 
+/* Safe sound loader with the same idea as FileLoadTexture. */
 static bool FileLoadSound(Sound *out, const char *path)
 {
     if (!FileExists(path))
@@ -151,6 +210,7 @@ static bool FileLoadSound(Sound *out, const char *path)
     return true;
 }
 
+/* Map a background enum value from a dialogue node to the actual loaded texture. */
 static void SetBackground(int id)
 {
     switch(id)
@@ -178,6 +238,7 @@ static void SetBackground(int id)
     }
 }
 
+/* Map an avatar enum value from a dialogue node to the actual loaded portrait. */
 static void SetAvatar(int id)
 {
     switch(id)
@@ -191,6 +252,7 @@ static void SetAvatar(int id)
     }
 }
 
+/* Play one of the shared sounds requested by a dialogue/event node. */
 static void PlaySoundById(int id)
 {
     switch(id)
@@ -201,6 +263,10 @@ static void PlaySoundById(int id)
         case SOUND_ELEVATOR: if (sndElevator.frameCount) PlaySound(sndElevator); break;
         case SOUND_LIGHT: if (sndLight.frameCount) PlaySound(sndLight); break;
         case SOUND_TALKING: if (sndTalking.frameCount) PlaySound(sndTalking); break;
+        case SOUND_PARK: if (sndPark.frameCount) PlaySound(sndPark); break;
+        case SOUND_CALL: if (sndCall.frameCount) PlaySound(sndCall); break;
+        case SOUND_GOOD_END: if (sndGoodEnd.frameCount) PlaySound(sndGoodEnd); break;
+        case SOUND_NEUT_END: if (sndNeutEnd.frameCount) PlaySound(sndNeutEnd); break;
         default: break;
     }
 }
@@ -213,6 +279,10 @@ static void StopAllSharedSounds(void)
     if (sndElevator.frameCount) StopSound(sndElevator);
     if (sndLight.frameCount) StopSound(sndLight);
     if (sndTalking.frameCount) StopSound(sndTalking);
+    if (sndPark.frameCount) StopSound(sndPark);
+    if (sndCall.frameCount) StopSound(sndCall);
+    if (sndGoodEnd.frameCount) StopSound(sndGoodEnd);
+    if (sndNeutEnd.frameCount) StopSound(sndNeutEnd);
 }
 
 static bool AllChecked(const bool *values, int count)
@@ -258,6 +328,24 @@ static void SetupInspect(int id)
         menu.checked = bathroomChecked;
         menu.sounds = bathroomSounds;
     }
+    else if(id == INSPECT_L1_DINER_MENU)
+    {
+        menu.items = dinerItems;
+        menu.descriptions = dinerDesc;
+        menu.images = dinerImages;
+        menu.count = 4;
+        menu.checked = dinerChecked;
+        menu.sounds = NULL; // optional
+    }
+    else if(id == INSPECT_L1_PARK_BASKET)
+    {
+        menu.items = basketItems;
+        menu.descriptions = basketDesc;
+        menu.images = basketImages;
+        menu.count = 3;
+        menu.checked = basketChecked;
+        menu.sounds = NULL;
+    }
 }
 
 static void StartCardById(int id)
@@ -282,21 +370,35 @@ static void StartCardById(int id)
     currentAvatar = NULL;
 }
 
+static void HandleL2LetterSelect(void)
+{
+    l2LetterChecked = true;
+    currentInspectTexture = &imgLetter;
+    OpenCustomMessage(
+        "Crumpled Letter",
+        "The same letter that appeared from the place where you first met her, and your favorite place with her.\n\nThat same letter that was never supposed to be in those memories.\n\nInside reads a message that was too special to send by text, but a message that you could never say out loud.\n\nA message that made your throat dry and your heart race from the thought of saying the words.\n\nAnd so you wrote them down."
+    ); 
+}
+
 static void StartCustomInspect(int id)
 {
     customSelected = 0;
     customMessageActive = false;
     customMessageTitle = NULL;
     customMessageBody = NULL;
-    dialogVisible = false;
-    savedAvatar = currentAvatar;
-    currentAvatar = NULL;
 
     switch (id)
     {
-        case INSPECT_L1_DINER_MENU: customMode = CUSTOM_L1_DINER_MENU; break;
-        case INSPECT_L1_PARK_BASKET: customMode = CUSTOM_L1_PARK_BASKET; break;
-        case INSPECT_L2_LETTER: customMode = CUSTOM_L2_LETTER; break;
+        case INSPECT_L2_LETTER:
+            customMode = CUSTOM_L2_LETTER;
+
+            dialogVisible = false;            
+            savedAvatar = currentAvatar;     
+            currentAvatar = NULL;            
+
+            HandleL2LetterSelect();  
+            break;
+
         default:
             customMode = CUSTOM_NONE;
             dialogVisible = true;
@@ -304,66 +406,6 @@ static void StartCustomInspect(int id)
             savedAvatar = NULL;
             break;
     }
-}
-
-
-
-static void HandleL1DinerSelect(void)
-{
-    switch (customSelected)
-    {
-        case 0:
-            l1DinerChecked[0] = true;
-            OpenCustomMessage("Spaghetti Bolognese",
-                "A plate of spaghetti bolognese.\n\nHer favorite.\n\nShe would always say that the sauce tasted better here than anywhere else.");
-            break;
-        case 1:
-            l1DinerChecked[1] = true;
-            OpenCustomMessage("Ribeye Steak",
-                "A ribeye steak cooked exactly how you liked it.\n\nIt was your usual order every time the two of you came here.");
-            break;
-        case 2:
-            l1DinerChecked[2] = true;
-            OpenCustomMessage("Beef Burger",
-                "A beef burger.\n\nYou don't remember ordering this.\n\nBut she once joked that you would probably eat this every day if you could.");
-            break;
-        case 3:
-            l1DinerChecked[3] = true;
-            OpenCustomMessage("Crumpled Letter",
-                "A crumpled letter rests between the menu pages.\n\nThat same letter appears again, where it should not be.");
-            break;
-    }
-}
-
-static void HandleL1BasketSelect(void)
-{
-    switch (customSelected)
-    {
-        case 0:
-            l1BasketChecked[0] = true;
-            OpenCustomMessage("Cheese Sandwich",
-                "A simple cheese sandwich.\n\nThe kind she liked making for picnics because she said complicated food ruined the point of eating outside.");
-            break;
-        case 1:
-            l1BasketChecked[1] = true;
-            OpenCustomMessage("Bottle of Lemonade",
-                "Cold lemonade.\n\nShe insisted it tasted better outdoors.\n\nYou never agreed, but you drank it anyway.");
-            break;
-        case 2:
-            l1BasketChecked[2] = true;
-            OpenCustomMessage("Crumpled Letter",
-                "You reach into the basket again and pick up a crumpled letter.\n\nThe very same letter that was listed on the menu.\n\nDaniel: \"Why does this letter feel so weird?\"\n\n\"Like it's not supposed to be there?\"");
-            break;
-    }
-}
-
-static void HandleL2LetterSelect(void)
-{
-    l2LetterChecked = true;
-    OpenCustomMessage(
-        "Crumpled Letter",
-        "The same letter that appeared from the place where you first met her, and your favorite place with her.\n\nThat same letter that was never supposed to be in those memories.\n\nInside reads a message that was too special to send by text, but a message that you could never say out loud.\n\nA message that made your throat dry and your heart race from the thought of saying the words.\n\nAnd so you wrote them down."
-    );
 }
 
 void EventsLoadResources(void)
@@ -377,51 +419,52 @@ void EventsLoadResources(void)
     FileLoadTexture(&bgBathroom, "assets/bathroom.png");
     FileLoadTexture(&bgLobby, "assets/charWithColleges.png");
 
-FileLoadTexture(&bgNeutralEnding, "assets/NeutralEnding.png");
-FileLoadTexture(&bgHappyEnding, "assets/HappyEnding.png");
-FileLoadTexture(&bgBadEnding, "assets/titleScreen.png");   // placeholder
+    FileLoadTexture(&bgNeutralEnding, "assets/NeutralEnding.png");
+    FileLoadTexture(&bgHappyEnding, "assets/HappyEnding.png");
+    FileLoadTexture(&bgBadEnding, "assets/sad_ending.jpg");   
 
-FileLoadTexture(&bgL1Diner, "assets/Diner.png");
-FileLoadTexture(&bgL1Booth, "assets/Diner.png");
-FileLoadTexture(&bgL1Her, "assets/Diner.png");
-FileLoadTexture(&bgL1DinerEmpty, "assets/EmptyDiner.png");
-FileLoadTexture(&bgL1Park, "assets/MorningPark.png");
-FileLoadTexture(&bgL1ParkEmpty, "assets/EveningPark.png");
-FileLoadTexture(&bgL1Hospital, "assets/room.png");
+    FileLoadTexture(&bgL1Diner, "assets/Diner.png");
+    FileLoadTexture(&bgL1Booth, "assets/Diner.png");
+    FileLoadTexture(&bgL1Her, "assets/Diner.png");
+    FileLoadTexture(&bgL1DinerEmpty, "assets/EmptyDiner.png");
+    FileLoadTexture(&bgL1Park, "assets/MorningPark.png");
+    FileLoadTexture(&bgL1ParkEmpty, "assets/EveningPark.png");
+    FileLoadTexture(&bgL1Hospital, "assets/room.png");
 
-FileLoadTexture(&bgL2Diner, "assets/Diner.png");
-FileLoadTexture(&bgL2Booth, "assets/Diner.png");
+    FileLoadTexture(&bgL2Diner, "assets/Diner.png");
+    FileLoadTexture(&bgL2Booth, "assets/Diner.png");
 
-FileLoadTexture(&avatarNeutral, "assets/character.png");
-FileLoadTexture(&avatarConfused, "assets/character.png");
-FileLoadTexture(&avatarSad, "assets/HappyMan.png");
-FileLoadTexture(&avatarGirlHappy, "assets/Happy.png");
-FileLoadTexture(&avatarGirlDisappointed, "assets/Disapointed.png");
+    FileLoadTexture(&avatarNeutral, "assets/character.png");
+    FileLoadTexture(&avatarConfused, "assets/character.png");
+    FileLoadTexture(&avatarSad, "assets/HappyMan.png");
+    FileLoadTexture(&avatarGirlHappy, "assets/Happy.png");
+    FileLoadTexture(&avatarGirlDisappointed, "assets/Disapointed.png");
 
     FileLoadTexture(&imgMirror, "assets/mirror.png");
-    FileLoadTexture(&imgToothbrush, "assets/toothbrush.png");
+    FileLoadTexture(&imgToothbrush, "assets/Toothbrushes.png");
     FileLoadTexture(&imgDuck, "assets/rubberDuck.png");
-    FileLoadTexture(&imgMirror, "assets/mirror.png");
-FileLoadTexture(&imgToothbrush, "assets/toothbrush.png");
-FileLoadTexture(&imgDuck, "assets/rubberDuck.png");
 
-FileLoadTexture(&imgSpaghetti, "assets/Spaghetti.png");
-FileLoadTexture(&imgSteak, "assets/Steak.png");
-FileLoadTexture(&imgBurger, "assets/BeefBurger.png");
-FileLoadTexture(&imgLetter, "assets/crumpled letter.png");
+    FileLoadTexture(&imgSpaghetti, "assets/Spaghetti.png");
+    FileLoadTexture(&imgSteak, "assets/Steak.png");
+    FileLoadTexture(&imgBurger, "assets/BeefBurger.png");
+    FileLoadTexture(&imgLetter, "assets/letter.png");
 
-FileLoadTexture(&imgSandwich, "assets/Sandwich.png");
-FileLoadTexture(&imgLemonade, "assets/Lemonade.png");
+    FileLoadTexture(&imgSandwich, "assets/Sandwich.png");
+    FileLoadTexture(&imgLemonade, "assets/Lemonade.png");
 
     FileLoadSound(&sndDing, "assets/choose_option.mp3");
     FileLoadSound(&sndScary, "assets/elevatorScarySound.wav");
     FileLoadSound(&sndElevator, "assets/elevatorDing.wav");
     FileLoadSound(&sndLight, "assets/light.wav");
     FileLoadSound(&sndTalking, "assets/talking.wav");
+    FileLoadSound(&sndCall, "assets/calling.mp3");
+    FileLoadSound(&sndGoodEnd, "assets/goodending.mp3");
+    FileLoadSound(&sndNeutEnd, "assets/neutralending.mp3");
     sndRumble = sndDing;
     FileLoadSound(&sndMirror, "assets/mirror.wav");
     FileLoadSound(&sndToothbrush, "assets/toothbrush.wav");
     FileLoadSound(&sndDuck, "assets/rubberDuck.wav");
+    FileLoadSound(&sndPark, "assets/park.mp3");
 }
 
 void EventsInit(void)
@@ -456,15 +499,20 @@ void EventsInit(void)
     savedAvatar = NULL;
 
     memset(bathroomChecked, 0, sizeof(bathroomChecked));
-    memset(l1DinerChecked, 0, sizeof(l1DinerChecked));
-    memset(l1BasketChecked, 0, sizeof(l1BasketChecked));
+    memset(dinerChecked, 0, sizeof(dinerChecked));
+    memset(basketChecked, 0, sizeof(basketChecked));
     l2LetterChecked = false;
 }
 
+// all the events description
+
+/* React to event flags attached to a dialogue node.
+   A single node can request multiple things at once because events are stored as bit flags. */
 void EventsTrigger(DialogEvent ev, int bg, int avatar, int sound, int inspectId)
 {
     if(ev & EVENT_DIALOG_SHOW) dialogVisible = true;
     if(ev & EVENT_DIALOG_HIDE) dialogVisible = false;
+    // Background/avatar/sound IDs are passed separately so the same event system can be reused by every level.
     if(ev & EVENT_CHANGE_BACKGROUND) SetBackground(bg);
     if(ev & EVENT_AVATAR_SHOW) SetAvatar(avatar);
     if(ev & EVENT_AVATAR_HIDE) currentAvatar = NULL;
@@ -479,17 +527,18 @@ void EventsTrigger(DialogEvent ev, int bg, int avatar, int sound, int inspectId)
 
     if(ev & EVENT_INSPECT_START)
     {
-        if (inspectId == INSPECT_BATHROOM_ITEMS)
+        // Special overlays temporarily take over input until the player closes them.
+        if (inspectId == INSPECT_L2_LETTER)
         {
-            SetupInspect(inspectId);
+            StartCustomInspect(inspectId); 
+        }
+        else
+        {
+            SetupInspect(inspectId);        
             inspecting = true;
             dialogVisible = false;
             savedAvatar = currentAvatar;
             currentAvatar = NULL;
-        }
-        else
-        {
-            StartCustomInspect(inspectId);
         }
     }
 
@@ -501,11 +550,24 @@ void EventsTrigger(DialogEvent ev, int bg, int avatar, int sound, int inspectId)
 
     if(ev & EVENT_SHOW_CARD) StartCardById(inspectId);
 
-    if(ev & EVENT_GO_LEVEL1) { transitionPending = true; pendingState = LEVEL1; }
-    if(ev & EVENT_GO_LEVEL2) { transitionPending = true; pendingState = LEVEL2; }
-    if(ev & EVENT_GO_LEVEL3) { transitionPending = true; pendingState = LEVEL3; }
-    if(ev & EVENT_GO_LEVEL4) { transitionPending = true; pendingState = LEVEL4; }
-    if(ev & EVENT_GO_ENDING) { transitionPending = true; pendingState = ENDING_GOOD; }
+    if(ev & EVENT_GO_LEVEL1 || ev & EVENT_GO_LEVEL2 ||
+   ev & EVENT_GO_LEVEL3 || ev & EVENT_GO_LEVEL4 ||
+   ev & EVENT_GO_ENDING)
+    {
+        transitionPending = true;
+
+        if(ev & EVENT_GO_LEVEL1) pendingState = LEVEL1;
+        if(ev & EVENT_GO_LEVEL2) pendingState = LEVEL2;
+        if(ev & EVENT_GO_LEVEL3) pendingState = LEVEL3;
+        if(ev & EVENT_GO_LEVEL4) pendingState = LEVEL4;
+        if(ev & EVENT_GO_ENDING) pendingState = finalEnding;
+
+        // deleted transitions cause now they are useless
+        fadeMode = 0;
+        fadeAlpha = 0.0f;
+
+        transitionMode = TRANS_NONE;
+    }
 
     if(ev & EVENT_TRANSITION_SLIDE) { transitionMode = TRANS_SLIDE; transitionTimer = 0.0f; }
     if(ev & EVENT_TRANSITION_FLASH) { transitionMode = TRANS_FLASH; transitionTimer = 0.0f; }
@@ -554,6 +616,7 @@ void EventsUpdate(void)
         if(eyeClosedAmount <= 0.0f) { eyeClosedAmount = 0.0f; eyeMode = 0; }
     }
 
+    // inspecting input handling
     if(inspecting)
     {
         if(showingDesc)
@@ -593,6 +656,8 @@ void EventsUpdate(void)
         return;
     }
 
+    // custom inspecting (card && letter)
+
     if(customMode == CUSTOM_CARD)
     {
         if(IsKeyPressed(KEY_ENTER)) FinishOverlayAndResume();
@@ -611,38 +676,9 @@ void EventsUpdate(void)
         }
         return;
     }
-
-    if(customMode == CUSTOM_L1_DINER_MENU || customMode == CUSTOM_L1_PARK_BASKET)
-    {
-        int itemCount = (customMode == CUSTOM_L1_DINER_MENU) ? 4 : 3;
-
-        if(customMessageActive)
-        {
-            if(IsKeyPressed(KEY_ENTER))
-            {
-                customMessageActive = false;
-                customMessageTitle = NULL;
-                customMessageBody = NULL;
-
-                if ((customMode == CUSTOM_L1_DINER_MENU && AllChecked(l1DinerChecked, 4)) ||
-                    (customMode == CUSTOM_L1_PARK_BASKET && AllChecked(l1BasketChecked, 3)))
-                {
-                    FinishOverlayAndResume();
-                }
-            }
-            return;
-        }
-
-        if(IsKeyPressed(KEY_DOWN)) customSelected = (customSelected + 1) % itemCount;
-        if(IsKeyPressed(KEY_UP)) customSelected = (customSelected - 1 + itemCount) % itemCount;
-
-        if(IsKeyPressed(KEY_ENTER))
-        {
-            if(customMode == CUSTOM_L1_DINER_MENU) HandleL1DinerSelect();
-            else HandleL1BasketSelect();
-        }
-    }
 }
+
+// drawing the inspection
 
 void EventsDrawOverlay(void)
 {
@@ -704,44 +740,18 @@ void EventsDrawOverlay(void)
         return;
     }
 
-    if(customMode == CUSTOM_L1_DINER_MENU || customMode == CUSTOM_L1_PARK_BASKET || customMode == CUSTOM_L2_LETTER)
+    if(customMode == CUSTOM_L2_LETTER)
     {
         DrawRectangle(100, 120, w - 200, h - 240, Fade(BLACK, 0.88f));
 
-        if(customMode == CUSTOM_L1_DINER_MENU)
+        Texture2D *img = currentInspectTexture;
+
+        if(img && img->id != 0)
         {
-            const char *items[4] = { "Spaghetti Bolognese", "Ribeye Steak", "Beef Burger", "Crumpled Letter" };
-            DrawText("DINER MENU - inspect everything", 150, 160, 36, WHITE);
-
-            for(int i = 0; i < 4; i++)
-            {
-                Color c = (i == customSelected) ? YELLOW : WHITE;
-                DrawText(items[i], 170, 240 + i * 55, 32, c);
-                if(l1DinerChecked[i]) DrawText("[checked]", 700, 240 + i * 55, 28, GREEN);
-            }
-
-            DrawText("UP/DOWN to move, ENTER to inspect", 150, h - 120, 28, LIGHTGRAY);
-        }
-        else if(customMode == CUSTOM_L1_PARK_BASKET)
-        {
-            const char *items[3] = { "Cheese Sandwich", "Bottle of Lemonade", "Crumpled Letter" };
-            DrawText("PICNIC BASKET - inspect everything", 150, 160, 36, WHITE);
-
-            for(int i = 0; i < 3; i++)
-            {
-                Color c = (i == customSelected) ? YELLOW : WHITE;
-                DrawText(items[i], 170, 240 + i * 55, 32, c);
-                if(l1BasketChecked[i]) DrawText("[checked]", 700, 240 + i * 55, 28, GREEN);
-            }
-
-            DrawText("UP/DOWN to move, ENTER to inspect", 150, h - 120, 28, LIGHTGRAY);
-        }
-        else
-        {
-            DrawText("MEMORY ITEM", 170, 180, 38, WHITE);
-            DrawText("Give crumpled letter", 190, 280, 34, YELLOW);
-            if(l2LetterChecked) DrawText("[checked]", 600, 280, 30, GREEN);
-            DrawText("Press ENTER to inspect", 170, h - 130, 28, LIGHTGRAY);
+            float scale = 0.4f;
+            DrawTextureEx(*img,
+                (Vector2){ w/2 - img->width*scale/2, h/2 - 50 },
+                0, scale, WHITE);
         }
 
         if(customMessageActive)
@@ -755,6 +765,8 @@ void EventsDrawOverlay(void)
         }
     }
 }
+
+// blocking input when needed, checking if a transition can happen, and getters for the current state of events
 
 bool EventsBusy(void)
 {
@@ -771,6 +783,7 @@ bool EventsShouldBlockInput(void)
     return false;
 }
 
+/* Return a pending scene change exactly once, then clear it. */
 bool EventsConsumeTransition(GameState *outState)
 {
     if(transitionPending && !EventsBusy())
@@ -781,6 +794,8 @@ bool EventsConsumeTransition(GameState *outState)
     }
     return false;
 }
+
+//idk if we still need all these getters but here they are ill delete it later
 
 bool EventsIsDialogVisible(void) { return dialogVisible; }
 Texture2D *EventsGetCurrentBackground(void) { return currentBG; }

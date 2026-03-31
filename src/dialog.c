@@ -1,6 +1,11 @@
+/* Reusable dialogue system.
+   It handles the typewriter effect, branching choices, and drawing the text box. */
+
 #include "dialog.h"
 #include <string.h>
 
+/* Helper used by the dialogue box.
+   Splits long text into multiple lines so it stays inside the dialogue panel. */
 static void DrawWrappedText(const char *text, float x, float y, float maxWidth, float fontSize, float spacing, Color color)
 {
     Font font = GetFontDefault();
@@ -57,6 +62,7 @@ static void DrawWrappedText(const char *text, float x, float y, float maxWidth, 
     }
 }
 
+/* Start reading a new dialogue script from node 0. */
 void DialogStart(DialogState *state, DialogNode *script)
 {
     state->nodes = script;
@@ -71,6 +77,8 @@ void DialogStart(DialogState *state, DialogNode *script)
     state->selectedChoice = 0;
 }
 
+/* Advance the active dialogue.
+   This handles typing, input, choices, and returns scene events when a node triggers one. */
 DialogEvent DialogUpdate(DialogState *state)
 {
     if(state->finished) return EVENT_NONE;
@@ -102,9 +110,11 @@ DialogEvent DialogUpdate(DialogState *state)
             {
                 if(node->event != EVENT_NONE)
                 {
+                    // Pause dialogue progression until the event system says the current scene effect is done.
                     state->waitingEvent = true;
 
                     DialogEvent ev = node->event;
+                    // Clear the event after firing it once so the same node does not replay it repeatedly.
                     node->event = EVENT_NONE;
 
                     return ev;
@@ -150,6 +160,8 @@ DialogEvent DialogUpdate(DialogState *state)
     return EVENT_NONE;
 }
 
+/* Continue after an external event finishes.
+   For example: fade, shake, inspect menu, or scene transition. */
 void DialogResume(DialogState *state)
 {
     DialogNode *node = &state->nodes[state->index];
@@ -165,6 +177,7 @@ void DialogResume(DialogState *state)
     state->typeTimer = 0;
 }
 
+/* Draw the current dialogue box, visible text, and choice list. */
 void DialogDraw(DialogState *state)
 {
     if(state->finished) return;

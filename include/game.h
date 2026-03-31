@@ -1,3 +1,6 @@
+/* Shared game-wide declarations.
+   Other files include this header to access the global state enum and shared counters. */
+
 #ifndef GAME_H
 #define GAME_H
 
@@ -7,6 +10,8 @@
 
 // states of the game, to know where we are and where to go next
 
+/* High-level game screens.
+   The main loop switches on this enum every frame. */
 typedef enum
 {
     MENU,
@@ -20,8 +25,10 @@ typedef enum
     ENDING_BAD
 } GameState;
 
+// Scene scripts write to this before returning to the elevator so the elevator knows where to go next.
 extern GameState nextLevel;
 
+// Cached ending value chosen at the end of the run.
 extern GameState finalEnding;
 
 // dialog system
@@ -40,6 +47,7 @@ extern int screenWidth;
 extern int screenHeight;
 
 // ending system
+// Ending counters collected across levels.
 extern int angerBad;
 extern int depressionBad;
 // extern int weirdAnswer;

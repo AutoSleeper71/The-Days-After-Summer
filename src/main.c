@@ -1,3 +1,7 @@
+/* Main entry point of the game.
+   Creates the window/audio, runs the main state machine,
+   and initializes the next screen whenever the state changes. */
+
 #include "raylib.h"
 
 #include "game.h"
@@ -13,6 +17,8 @@
 int screenWidth = 1920;
 int screenHeight = 1080;
 
+/* Program entry point.
+   Sets up the engine and keeps switching between scenes until the window closes. */
 int main(void)
 {
     // ToggleFullscreen();
@@ -27,7 +33,7 @@ int main(void)
     EndDrawing();
     EventsLoadResources();
 
-    GameState state = LEVEL3;
+    GameState state = MENU;
 
     while (!WindowShouldClose())
     {
@@ -76,7 +82,6 @@ int main(void)
         state = newState;
     }
 
-    UnloadElevator();
     CloseAudioDevice();
     CloseWindow();
 

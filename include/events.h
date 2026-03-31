@@ -1,3 +1,5 @@
+/* Public interface for the shared event / overlay system. */
+
 #ifndef EVENTS_H
 #define EVENTS_H
 
@@ -5,9 +7,11 @@
 #include "game.h"
 #include <stdbool.h>
 
+// Extra transition effect flags.
 #define EVENT_TRANSITION_SLIDE  (1 << 20)
 #define EVENT_TRANSITION_FLASH  (1 << 21)
 
+/* Bit-flag events that a dialogue node can request from the scene system. */
 typedef enum
 {
     EVENT_NONE              = 0,
@@ -33,6 +37,7 @@ typedef enum
     EVENT_SHOW_CARD         = 1 << 19
 } DialogEvent;
 
+/* Shared background IDs understood by the event system. */
 typedef enum
 {
     BG_NONE = 0,
@@ -59,6 +64,7 @@ typedef enum
     BG_BLACK
 } EventBackground;
 
+/* Shared portrait IDs. */
 typedef enum
 {
     AVATAR_NONE = 0,
@@ -69,6 +75,7 @@ typedef enum
     AVATAR_GIRL_DISAPPOINTED
 } EventAvatar;
 
+/* Shared sound effect / music IDs. */
 typedef enum
 {
     SOUND_NONE = 0,
@@ -77,9 +84,14 @@ typedef enum
     SOUND_ELEVATOR_SCARY,
     SOUND_ELEVATOR,
     SOUND_LIGHT,
-    SOUND_TALKING
+    SOUND_TALKING,
+    SOUND_PARK,
+    SOUND_CALL,
+    SOUND_GOOD_END,
+    SOUND_NEUT_END
 } EventSound;
 
+/* Overlay/inspect IDs used by special interactive dialogue nodes. */
 typedef enum
 {
     INSPECT_NONE = 0,

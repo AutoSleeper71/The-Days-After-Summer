@@ -1,258 +1,360 @@
+/* Zuma-style letter minigame.
+   The player fires letters into a moving chain to complete answers and clear each round. */
+
 #include "zuma.h"
 #include "raymath.h"
 #include <string.h>
 #include <math.h>
 
-#define MAX_LETTERS 100       // max number of the letters on the track
-#define MAX_PROJECTILES 20    // max number of the bullets on the screen
-#define LETTER_RADIUS 15      // radius of the letter 
-#define CHAIN_SPEED 1.2f      // speed of the letters on the track
-#define BULLET_SPEED 8.0f     // speed of the bullets
-#define LETTER_SPACING 35.0f  // interval between the letters on the track
+// File-specific compile-time limit used to size arrays safely.
+#define MAX_LETTERS 100
+#define MAX_PROJECTILES 20
+#define LETTER_RADIUS 15
+#define BULLET_SPEED 10.0f
+#define LETTER_SPACING 35.0f
 
-//letter on the track
+extern int depressionBad;
+
+/* One moving letter in the chain.
+   distance stores how far along the path that letter has traveled. */
 typedef struct {
-    char charVal;      // letter character
-    float distance;    // the distance of the letter on the track
-    bool active;       // whether the letter is active
-    Color color;       // color of the letter
+    char charVal;
+    float distance;
+    Color color;
 } Letter;
 
-//bullet the player shoots
+/* One fired projectile from the player. */
 typedef struct {
-    char charVal;      // letter character
-    Vector2 pos;       // current position of the bullet
-    Vector2 velocity;  // speed of the bullet
-    bool active;       // active status of the bullet
+    char charVal;
+    Vector2 pos;
+    Vector2 velocity;
+    bool active;
 } Projectile;
 
-// question and answer
+/* Question/answer pair for one minigame round. */
 typedef struct {
-    const char* question; // question
-    const char* answer;   // answer
+    const char* question;
+    const char* answer;
 } MiniLevelData;
 
 static MiniLevelData miniLevels[] = {
-    {"1 + 1 = ?", "TWO"},           // question 1
-    {"CAPITAL OF FRANCE?", "PARIS"}, 
-    {"OPPOSITE OF HOT?", "COLD"}     // ...
+    {"1 + 1 = ?", "TWO"},
+    {"CAPITAL OF FRANCE?", "PARIS"},
+    {"OPPOSITE OF HOT?", "COLD"}
 };
-static int miniTotalLevels = 3;     // total number of the levels(now 3 )
 
+static int miniTotalLevels = 3;
+static int miniCurrentLevel = 0;
+static int miniScore = 0;
 
+static Letter miniChain[MAX_LETTERS];
+static int miniChainCount = 0;
 
-static int miniCurrentLevel = 0;    // current level index
-static int miniScore = 0;           // current score
-static Letter miniChain[MAX_LETTERS]; // all letters on the track
-static int miniChainCount = 0;      // current letters on the track
-static Projectile miniProjectiles[MAX_PROJECTILES]; // all bullets 
-static char miniNextBulletChar = 'A'; // next bullet character
-static bool miniGameWon = false;    // whether the game is won
+static Projectile miniProjectiles[MAX_PROJECTILES];
 
-static Vector2 GetMinigamePathPoint(float t) {
-    float R = 180.0f;  // radius of the track
-    float H = 400.0f;  // vertical track length
-    float alpha = -2.0f * PI / 3.0f; // track rotation angle (30 degrees tilt)
+static int answerIndex = 0;
+static char miniNextBulletChar;
 
-    float arcLen = PI * R;           // half circle length
-    float totalLen = H + arcLen + H; // total track length
-    float d = t * totalLen;          // current distance
-    Vector2 p = {0, 0};
+static bool miniGameFinished = false;
 
-    // calculate the position of the letter on the track
-    // left line -> bottom half circle -> right line
-    if (d < H) {
-        p.x = -R; p.y = -d;
-    } else if (d < H + arcLen) {
-        float angle = (d - H) / R;
-        p.x = -R * cosf(angle); p.y = -R * sinf(angle);
-    } else {
-        p.x = R; p.y = (d - H - arcLen);
+////////////////////////////////////////////////////////////
+// ПУТЬ 
+////////////////////////////////////////////////////////////
+/* Convert a normalized progress value into a screen position on the U-shaped path. */
+static Vector2 GetPathPoint(float t) {
+    float w = GetScreenWidth();
+    float h = GetScreenHeight();
+
+    float margin = 80;
+
+    float left = margin;
+    float right = w - margin;
+    float top = margin;
+    float bottom = h - margin;
+
+    if (t < 0.33f) {
+        float k = t / 0.33f;
+        return (Vector2){ left, top + k * (bottom - top) };
     }
-
-    // tilt the letter on the track
-    float nx = p.x * cosf(alpha) - p.y * sinf(alpha);
-    float ny = p.x * sinf(alpha) + p.y * cosf(alpha);
-
-    // shift the position to the center of the screen
-    return (Vector2){ nx + GetScreenWidth()/2, ny + GetScreenHeight()/2 + 50 };
+    else if (t < 0.66f) {
+        float k = (t - 0.33f) / 0.33f;
+        return (Vector2){ left + k * (right - left), bottom };
+    }
+    else {
+        float k = (t - 0.66f) / 0.34f;
+        return (Vector2){ right, bottom - k * (bottom - top) };
+    }
 }
 
-static void CheckMinigameMatches(void) {
+////////////////////////////////////////////////////////////
+
+/* Scan the moving chain for the full answer string.
+   When the answer appears, remove it and either advance to the next round or finish the minigame. */
+static void CheckMatch(void) {
     const char* ans = miniLevels[miniCurrentLevel].answer;
-    int ansLen = (int)strlen(ans);
-    
-    
-    // reverse the answer string
-    char reversedAns[32];
-    for(int i=0; i<ansLen; i++) reversedAns[i] = ans[ansLen - 1 - i];
-    reversedAns[ansLen] = '\0';
+    int len = strlen(ans);
 
-    // check the matches of the answer string on the track
-    for (int i = 0; i <= miniChainCount - ansLen; i++) {
+    for (int i = 0; i <= miniChainCount - len; i++) {
         bool match = true;
-        for (int j = 0; j < ansLen; j++) {
-            if (miniChain[i + j].charVal != reversedAns[j]) { match = false; break; }
-        }
-        
-        //成功 if the answer string matches the letters on the track
-        if (match) {
-            // 1. remove the letters from the track
-            for (int k = i + ansLen; k < miniChainCount; k++) miniChain[k - ansLen] = miniChain[k];
-            miniChainCount -= ansLen;
-            
-            // 2. increase the score
-            miniScore++; 
 
-            // 3. check if the track is empty
+        for (int j = 0; j < len; j++) {
+            if (miniChain[i + j].charVal != ans[j]) {
+                match = false;
+                break;
+            }
+        }
+
+        if (match) {
+            for (int k = i + len; k < miniChainCount; k++)
+                miniChain[k - len] = miniChain[k];
+
+            miniChainCount -= len;
+            miniScore++;
+
             if (miniChainCount <= 0) {
                 miniCurrentLevel++;
-                // check if all levels are finished
-                if (miniCurrentLevel >= miniTotalLevels) miniGameWon = true;
-                else InitMinigame(); // load the next level
+
+                if (miniCurrentLevel >= miniTotalLevels)
+                    miniGameFinished = true;
+                else
+                    InitMinigame();
             }
             return;
         }
     }
 }
 
+////////////////////////////////////////////////////////////
+
+/* Reset the current round and build the starting chain from the visible question text. */
 void InitMinigame(void) {
-    if (miniCurrentLevel >= miniTotalLevels) { miniGameWon = true; return; }
-    
-    ShowCursor();
+    if (miniCurrentLevel >= miniTotalLevels) {
+        miniGameFinished = true;
+        return;
+    }
 
     miniChainCount = 0;
-    miniGameWon = false;
-    // clear all bullets
-    for(int i=0; i<MAX_PROJECTILES; i++) miniProjectiles[i].active = false;
+    miniGameFinished = false;
 
-    // initialize the track with the question
+    for (int i = 0; i < MAX_PROJECTILES; i++)
+        miniProjectiles[i].active = false;
+
     const char* q = miniLevels[miniCurrentLevel].question;
-    for (int i = 0; i < (int)strlen(q); i++) {
+
+    for (int i = 0; i < strlen(q); i++) {
         if (q[i] != ' ') {
             miniChain[miniChainCount].charVal = q[i];
             miniChain[miniChainCount].distance = -miniChainCount * LETTER_SPACING;
-            miniChain[miniChainCount].active = true;
             miniChain[miniChainCount].color = RED;
             miniChainCount++;
         }
     }
-    // set the first bullet character
+
+    answerIndex = 0;
     miniNextBulletChar = miniLevels[miniCurrentLevel].answer[0];
 }
 
+////////////////////////////////////////////////////////////
+
+/* Advance chain movement, fire projectiles, handle collisions, and check win/loss conditions. */
 void UpdateMinigame(void) {
-    if (miniGameWon) return; // if the game is won,stop the update
 
-    // 1. update the position of the letters on the track
-    for (int i = 0; i < miniChainCount; i++) miniChain[i].distance += CHAIN_SPEED;
+    if (miniGameFinished) return;
 
-    // 2. handle the bullet shooting
+    float speed = 0.4f + miniCurrentLevel * 0.6f;
+
+    for (int i = 0; i < miniChainCount; i++)
+        miniChain[i].distance += speed;
+
+    // ПРОИГРЫШ
+    if (miniChainCount > 0) {
+        float lastT = miniChain[miniChainCount - 1].distance / 1000.0f;
+
+        // If the tail of the chain reaches the end of the path, count it as a failure for this round.
+        if (lastT >= 1.0f) {
+            depressionBad++;
+
+            miniCurrentLevel++;
+
+            if (miniCurrentLevel >= miniTotalLevels)
+                miniGameFinished = true;
+            else
+                InitMinigame();
+
+            return;
+        }
+    }
+
+    Vector2 center = {
+        GetScreenWidth()/2.0f,
+        GetScreenHeight()/2.0f
+    };
+
+    // Clicking fires the next required answer letter from the center of the screen toward the mouse cursor.
     if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
         for (int i = 0; i < MAX_PROJECTILES; i++) {
             if (!miniProjectiles[i].active) {
+
                 miniProjectiles[i].active = true;
-                // initialize the bullet position
-                miniProjectiles[i].pos = (Vector2){ GetScreenWidth()/2.0f, GetScreenHeight()/2.0f + 50.0f };
+                miniProjectiles[i].pos = center;
                 miniProjectiles[i].charVal = miniNextBulletChar;
-                
-                // calculate the shooting direction vector
-                Vector2 mouse = GetMousePosition();
-                Vector2 dir = Vector2Subtract(mouse, miniProjectiles[i].pos);
-                miniProjectiles[i].velocity = Vector2Scale(Vector2Normalize(dir), BULLET_SPEED);
-                
-                // set the next bullet character in the answer string
+
+                Vector2 dir = Vector2Normalize(
+                    Vector2Subtract(GetMousePosition(), center));
+
+                miniProjectiles[i].velocity =
+                    Vector2Scale(dir, BULLET_SPEED);
+
                 const char* ans = miniLevels[miniCurrentLevel].answer;
-                int len = (int)strlen(ans);
-                
-                miniNextBulletChar = ans[GetRandomValue(0, len - 1)];
+                int len = strlen(ans);
+
+                answerIndex++;
+                if (answerIndex >= len) answerIndex = 0;
+
+                miniNextBulletChar = ans[answerIndex];
                 break;
             }
         }
     }
 
-    // 3. update the position of the bullets
+    // trajectory update
     for (int i = 0; i < MAX_PROJECTILES; i++) {
-        if (miniProjectiles[i].active) {
-            miniProjectiles[i].pos = Vector2Add(miniProjectiles[i].pos, miniProjectiles[i].velocity);
-            
-            // check if the bullet hits any letter on the track
-            for (int j = 0; j < miniChainCount; j++) {
-                Vector2 lp = GetMinigamePathPoint(miniChain[j].distance / 1000.0f);
-                if (Vector2Distance(miniProjectiles[i].pos, lp) < LETTER_RADIUS * 2) {
-                    // hit the letter on the track
-                    for (int k = miniChainCount; k > j; k--) miniChain[k] = miniChain[k-1];
-                    miniChain[j].charVal = miniProjectiles[i].charVal;
-                    miniChain[j].distance = miniChain[j+1].distance - LETTER_SPACING;
-                    miniChain[j].color = BLUE;
-                    miniChainCount++;
-                    
-                    miniProjectiles[i].active = false; // destroy the bullet
-                    CheckMinigameMatches(); // check the matches
-                    break;
-                }
+        if (!miniProjectiles[i].active) continue;
+
+        miniProjectiles[i].pos =
+            Vector2Add(miniProjectiles[i].pos, miniProjectiles[i].velocity);
+
+        int bestIndex = -1;
+        float bestDist = 999999.0f;
+
+        for (int j = 0; j < miniChainCount; j++) {
+            Vector2 lp = GetPathPoint(miniChain[j].distance / 1000.0f);
+            float d = Vector2Distance(miniProjectiles[i].pos, lp);
+
+            if (d < bestDist) {
+                bestDist = d;
+                bestIndex = j;
             }
-            
-            // if the bullet is out of the screen boundary,destroy it
-            if (miniProjectiles[i].pos.x < 0 || miniProjectiles[i].pos.x > GetScreenWidth() || 
-                miniProjectiles[i].pos.y < 0 || miniProjectiles[i].pos.y > GetScreenHeight()) miniProjectiles[i].active = false;
         }
+
+        // Close-enough projectiles snap into the chain, then the game checks whether the answer word was formed.
+        if (bestDist < LETTER_RADIUS * 3.5f && bestIndex != -1) {
+
+            int j = bestIndex;
+            Vector2 lp = GetPathPoint(miniChain[j].distance / 1000.0f);
+
+            // магнит
+            miniProjectiles[i].pos = lp;
+
+            for (int k = miniChainCount; k > j; k--)
+                miniChain[k] = miniChain[k - 1];
+
+            miniChain[j].charVal = miniProjectiles[i].charVal;
+
+            if (j < miniChainCount - 1)
+                miniChain[j].distance =
+                    miniChain[j + 1].distance - LETTER_SPACING;
+            else
+                miniChain[j].distance =
+                    miniChain[j - 1].distance + LETTER_SPACING;
+
+            miniChain[j].color = BLUE;
+            miniChainCount++;
+
+            miniProjectiles[i].active = false;
+
+            CheckMatch();
+        }
+
+        if (miniProjectiles[i].pos.x < 0 ||
+            miniProjectiles[i].pos.x > GetScreenWidth() ||
+            miniProjectiles[i].pos.y < 0 ||
+            miniProjectiles[i].pos.y > GetScreenHeight())
+            miniProjectiles[i].active = false;
     }
 }
 
+////////////////////////////////////////////////////////////
+
+/* Render the aiming guide, path, moving chain, projectiles, and HUD text. */
 void DrawMinigame(void) {
-    // 1. draw the track background
-    for (float t = 0; t < 1.0f; t += 0.005f) DrawCircleV(GetMinigamePathPoint(t), 2, LIGHTGRAY);
-    
-    // 2. draw the letters on the track
+
+    Vector2 center = {
+        GetScreenWidth()/2.0f,
+        GetScreenHeight()/2.0f
+    };
+
+    // линия прицеливания
+    DrawLineV(center, GetMousePosition(), Fade(WHITE, 0.3f));
+
+    for (float t = 0; t < 1.0f; t += 0.005f)
+        DrawCircleV(GetPathPoint(t), 2, LIGHTGRAY);
+
     for (int i = 0; i < miniChainCount; i++) {
         if (miniChain[i].distance >= 0) {
-            Vector2 p = GetMinigamePathPoint(miniChain[i].distance / 1000.0f);
+            Vector2 p = GetPathPoint(miniChain[i].distance / 1000.0f);
             DrawCircleV(p, LETTER_RADIUS, miniChain[i].color);
-            DrawText(TextFormat("%c", miniChain[i].charVal), (int)p.x - 5, (int)p.y - 8, 20, WHITE);
+            DrawText(TextFormat("%c", miniChain[i].charVal),
+                     p.x - 5, p.y - 8, 20, WHITE);
         }
     }
 
-    // 3. draw the bullets
     for (int i = 0; i < MAX_PROJECTILES; i++) {
         if (miniProjectiles[i].active) {
             DrawCircleV(miniProjectiles[i].pos, LETTER_RADIUS, BLUE);
-            DrawText(TextFormat("%c", miniProjectiles[i].charVal), (int)miniProjectiles[i].pos.x - 5, (int)miniProjectiles[i].pos.y - 8, 20, WHITE);
+            DrawText(TextFormat("%c", miniProjectiles[i].charVal),
+                     miniProjectiles[i].pos.x - 5,
+                     miniProjectiles[i].pos.y - 8, 20, WHITE);
         }
     }
 
-    // 4. draw the turret
-    DrawCircle(GetScreenWidth()/2, GetScreenHeight()/2 + 50, 30, DARKGREEN);
-    DrawText(TextFormat("Next: %c", miniNextBulletChar), GetScreenWidth()/2 - 30, GetScreenHeight()/2 + 100, 20, DARKGRAY);
+    DrawCircleV(center, 30, DARKGREEN);
 
-    // 5. draw the HUD (score, level, question)
-    DrawText(TextFormat("SCORE: %d", miniScore), 20, 20, 30, ORANGE); 
-    DrawText(TextFormat("LEVEL: %d/%d", miniCurrentLevel + 1, miniTotalLevels), 20, 60, 20, DARKGRAY);
-    DrawText(TextFormat("Q: %s", miniLevels[miniCurrentLevel].question), 20, 90, 20, MAROON);
-    DrawText(TextFormat("TARGET: %s", miniLevels[miniCurrentLevel].answer), 20, 120, 20, DARKBLUE);
+    DrawText(TextFormat("Next: %c", miniNextBulletChar),
+             center.x - 40, center.y + 50, 20, DARKGRAY);
 
-    // 6. ending screen
-    if (miniGameWon) {
-        DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(RAYWHITE, 0.8f));
-        DrawText("ALL LEVELS CLEARED!", GetScreenWidth()/2 - 150, GetScreenHeight()/2 - 20, 30, GREEN);
-        DrawText(TextFormat("FINAL SCORE: %d", miniScore), GetScreenWidth()/2 - 80, GetScreenHeight()/2 + 30, 25, ORANGE);
-        DrawText("Press ENTER to continue", GetScreenWidth()/2 - 120, GetScreenHeight()/2 + 80, 20, DARKGRAY);
+    if (!miniGameFinished) {
+        DrawText(TextFormat("LEVEL: %d/%d",
+                 miniCurrentLevel + 1, miniTotalLevels),
+                 20, 20, 20, DARKGRAY);
+
+        DrawText(TextFormat("Q: %s",
+                 miniLevels[miniCurrentLevel].question),
+                 20, 50, 20, MAROON);
+
+        DrawText(TextFormat("TARGET: %s",
+                 miniLevels[miniCurrentLevel].answer),
+                 20, 80, 20, DARKBLUE);
+    }
+
+    if (miniGameFinished) {
+        DrawRectangle(0, 0,
+            GetScreenWidth(), GetScreenHeight(),
+            Fade(RAYWHITE, 0.9f));
+
+        DrawText("FINISHED",
+                 center.x - 80, center.y, 30, GREEN);
+
+        DrawText("Press ENTER to return",
+                 center.x - 140, center.y + 50, 20, DARKGRAY);
     }
 }
-    int GetMinigameScore(void) {
-    return miniScore;
-    //return the score of the minigame
+
+////////////////////////////////////////////////////////////
+
+/* Convenience check used by the outer level logic. */
+bool ShouldExitMinigame(void) {
+    return miniGameFinished && IsKeyPressed(KEY_ENTER);
 }
 
-// check if the minigame is finished,used to return to the main game
-bool IsMinigameWon(void) { return miniGameWon; }
+/* Expose the score to the rest of the game without leaking internal arrays/state. */
+int GetMinigameScore(void) {
+    return miniScore;
+}
 
-void ResetMinigameProgress(void)
-{
+/* Reset long-term minigame progress before starting a completely new run. */
+void ResetMinigameProgress(void) {
     miniCurrentLevel = 0;
     miniScore = 0;
-    miniGameWon = false;
-    miniChainCount = 0;
-
-    for (int i = 0; i < MAX_PROJECTILES; i++) miniProjectiles[i].active = false;
+    miniGameFinished = false;
 }

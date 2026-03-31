@@ -1,3 +1,5 @@
+/* Elevator scene API. */
+
 #ifndef ELEVATOR_H
 #define ELEVATOR_H
 
@@ -5,6 +7,5 @@
 
 void InitElevator();
 GameState UpdateElevator(void);
-void UnloadElevator();
 
 #endif

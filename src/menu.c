@@ -1,3 +1,6 @@
+/* Title screen and main menu.
+   Handles menu input, music, and the first transition into gameplay. */
+
 #include "menu.h"
 #include "raylib.h"
 #include "events.h"
@@ -12,6 +15,8 @@ Sound moveSound;
 Music backgroundMusic;
 
 // initialization function, since otherwise it just loads every frame
+/* Load menu assets and reset menu-specific state.
+   This is called once when entering the menu scene. */
 void InitMenu()
 {
 	selected = 0;
@@ -26,6 +31,8 @@ void InitMenu()
 
 }
 
+/* Draw and update the menu every frame.
+   Returns the next game state when the player makes a selection. */
 GameState UpdateMenu()
 {	
 	DrawTextureEx(titleScreen, (Vector2){0,0}, 0.0f, 1.0f, WHITE);
@@ -80,7 +87,7 @@ GameState UpdateMenu()
 	    if (IsKeyPressed(KEY_ENTER))
 	    {
 	        if (selected == 0)
-	            return ELEVATOR; // ✅ START GAME (example)
+	            return ELEVATOR; 
 	
 	        if (selected == 1)
 	        {
@@ -95,6 +102,8 @@ GameState UpdateMenu()
     return MENU;
 }
 
+/* Free menu-only assets.
+   Useful if you later decide to unload the menu scene cleanly. */
 void UnloadMenu()
 {
     UnloadTexture(titleScreen);
