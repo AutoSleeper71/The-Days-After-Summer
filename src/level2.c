@@ -600,52 +600,81 @@ GameState UpdateLevel2(void)
         InitLevel2State();
 
     if (!level2Initialized)
-{
-    DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), BLACK);
-    DrawText("Level 2 failed to initialize", 40, 40, 24, RED);
-    return LEVEL2;
-}
+    {
+        DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), BLACK);
+        DrawText("Level 2 failed to initialize", 40, 40, 24, RED);
+        return LEVEL2;
+    }
+
+    if (IsKeyPressed(KEY_ESCAPE) && !IsSettingsMenuOpen())
+    {
+        OpenPauseMenu();
+        return LEVEL2;
+    }
+
+    {
+        Texture2D *bg = EventsGetCurrentBackground();
+        if (bg && bg->id != 0)
+            DrawTexture(*bg, 0, 0, WHITE);
+        else
+            DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), BLACK);
+    }
+
+    {
+        Texture2D *avatar = EventsGetCurrentAvatar();
+        if (avatar && avatar->id != 0)
+        {
+            float scale = 1.5f;
+            DrawTexturePro(
+                *avatar,
+                (Rectangle){0, 0, (float)avatar->width, (float)avatar->height},
+                (Rectangle){
+                    GetScreenWidth() - avatar->width * scale - 50,
+                    GetScreenHeight() - avatar->height * scale,
+                    avatar->width * scale,
+                    avatar->height * scale
+                },
+                (Vector2){0, 0},
+                0.0f,
+                WHITE
+            );
+        }
+    }
+
+    if (IsSettingsMenuOpen())
+    {
+        EventsDrawOverlay();
+        DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(BLACK, 0.08f));
+
+        {
+            SettingsResult settings = UpdateAndDrawSettingsMenu();
+            if (settings == SETTINGS_RESULT_GO_TO_MENU)
+            {
+                SaveGameForState(LEVEL2);
+                return MENU;
+            }
+            if (settings == SETTINGS_RESULT_EXIT) return GAME_EXIT;
+        }
+        return LEVEL2;
+    }
 
     EventsUpdate();
 
-    GameState requestedState;
-    if (EventsConsumeTransition(&requestedState))
     {
-        level2Initialized = false;
-        if (requestedState == LEVEL3) level3Unlocked = 1;
-        return requestedState;
-    }
-
-    Texture2D *bg = EventsGetCurrentBackground();
-    if (bg && bg->id != 0)
-        DrawTexture(*bg, 0, 0, WHITE);
-    else
-        DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), BLACK);
-
-    Texture2D *avatar = EventsGetCurrentAvatar();
-    if (avatar && avatar->id != 0)
-    {
-        float scale = 1.5f;
-        DrawTexturePro(
-            *avatar,
-            (Rectangle){0, 0, (float)avatar->width, (float)avatar->height},
-            (Rectangle){
-                GetScreenWidth() - avatar->width * scale - 50,
-                GetScreenHeight() - avatar->height * scale,
-                avatar->width * scale,
-                avatar->height * scale
-            },
-            (Vector2){0, 0},
-            0.0f,
-            WHITE
-        );
+        GameState requestedState;
+        if (EventsConsumeTransition(&requestedState))
+        {
+            level2Initialized = false;
+            if (requestedState == LEVEL3) level3Unlocked = 1;
+            return requestedState;
+        }
     }
 
     if (introFadeActive)
     {
+        float fadeAlpha;
         introFadeTimer += GetFrameTime();
-
-        float fadeAlpha = 1.0f - (introFadeTimer / LEVEL2_START_FADE_TIME);
+        fadeAlpha = 1.0f - (introFadeTimer / LEVEL2_START_FADE_TIME);
         if (fadeAlpha < 0.0f) fadeAlpha = 0.0f;
 
         DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(BLACK, fadeAlpha));
@@ -666,12 +695,14 @@ GameState UpdateLevel2(void)
     if (!level2Dialog.finished)
     {
         if (EventsShouldBlockInput())
+        {
+            EventsDrawOverlay();
             return LEVEL2;
+        }
 
         if (!waitingOnEvent)
         {
             DialogEvent ev = DialogUpdate(&level2Dialog);
-
             if (ev != EVENT_NONE)
             {
                 DialogNode *node = &level2Dialog.nodes[level2Dialog.index];

@@ -400,85 +400,80 @@ GameState UpdateEnding(GameState endingType)
 {
     GameState requestedState;
 
-    /* update event system first */
-    EventsUpdate();
-
-    /* handle transitions */
-    if (EventsConsumeTransition(&requestedState))
-        return requestedState;
-
-    /* =========================
-       RESUME LOGIC
-       ========================= */
-
-    if (waitingOnEvent && !endingDialog.finished)
-{
-    if (!EventsBusy())
+    if (IsKeyPressed(KEY_ESCAPE) && !IsSettingsMenuOpen())
     {
-        waitingOnEvent = false;
-        DialogResume(&endingDialog);
+        OpenPauseMenu();
+        return endingType;
     }
-}
-
-    /* =========================
-       DRAW BACKGROUND
-       ========================= */
 
     Texture2D *bg = EventsGetCurrentBackground();
-    if (bg)
+    if (bg && bg->id)
         DrawTexture(*bg, 0, 0, WHITE);
     else
         DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), BLACK);
 
-    /* =========================
-       DRAW AVATAR
-       ========================= */
-
-    Texture2D *avatar = EventsGetCurrentAvatar();
-    if (avatar)
     {
-        float scale = 1.5f;
-
-        DrawTexturePro(
-            *avatar,
-            (Rectangle){0,0,avatar->width,avatar->height},
-            (Rectangle){
-                GetScreenWidth() - avatar->width * scale - 50,
-                GetScreenHeight() - avatar->height * scale,
-                avatar->width * scale,
-                avatar->height * scale
-            },
-            (Vector2){0,0},
-            0,
-            WHITE
-        );
+        Texture2D *avatar = EventsGetCurrentAvatar();
+        if (avatar && avatar->id)
+        {
+            float scale = 1.5f;
+            DrawTexturePro(
+                *avatar,
+                (Rectangle){0,0,avatar->width,avatar->height},
+                (Rectangle){
+                    GetScreenWidth() - avatar->width * scale - 50,
+                    GetScreenHeight() - avatar->height * scale,
+                    avatar->width * scale,
+                    avatar->height * scale
+                },
+                (Vector2){0,0},
+                0,
+                WHITE
+            );
+        }
     }
 
-    /* =========================
-       DIALOG SYSTEM 
-       ========================= */
+    if (IsSettingsMenuOpen())
+    {
+        EventsDrawOverlay();
+        {
+            SettingsResult settings = UpdateAndDrawSettingsMenu();
+            if (settings == SETTINGS_RESULT_GO_TO_MENU)
+            {
+                SaveGameForState(endingType);
+                return MENU;
+            }
+            if (settings == SETTINGS_RESULT_EXIT) return GAME_EXIT;
+        }
+        return endingType;
+    }
+
+    EventsUpdate();
+
+    if (EventsConsumeTransition(&requestedState))
+        return requestedState;
+
+    if (waitingOnEvent && !endingDialog.finished && !EventsBusy())
+    {
+        waitingOnEvent = false;
+        DialogResume(&endingDialog);
+    }
 
     if (!endingDialog.finished)
     {
         if (EventsShouldBlockInput())
+        {
+            EventsDrawOverlay();
             return endingType;
+        }
 
-        /* ONLY update dialog when NOT waiting */
         if (!waitingOnEvent)
         {
             DialogEvent ev = DialogUpdate(&endingDialog);
-
             if (ev != EVENT_NONE)
             {
                 DialogNode *node = &endingDialog.nodes[endingDialog.index];
-
-                EventsTrigger(ev,
-                    node->backgroundId,
-                    node->avatarId,
-                    node->soundId,
-                    node->inspectId);
-
-                /* force next frame continuation */
+                EventsTrigger(ev, node->backgroundId, node->avatarId, node->soundId, node->inspectId);
                 waitingOnEvent = true;
             }
         }
@@ -487,35 +482,21 @@ GameState UpdateEnding(GameState endingType)
             DialogDraw(&endingDialog);
     }
     else
-{
-    int w = GetScreenWidth();
-    int h = GetScreenHeight();
-
-    Texture2D *bg = EventsGetCurrentBackground();
-
-    if (bg)
-        DrawTexture(*bg, 0, 0, WHITE);
-    else
-        DrawRectangle(0, 0, w, h, BLACK);
-
-    // optional dark overlay for readability
-    DrawRectangle(0, 0, w, h, Fade(BLACK, 0.5f));
-
-    DrawText("Press ENTER to restart",
-             w/2 - 140,
-             h/2,
-             20,
-             WHITE);
-
-    if (IsKeyPressed(KEY_ENTER))
     {
-        ResetGame();
-        return MENU;
+        int w = GetScreenWidth();
+        int h = GetScreenHeight();
+
+        DrawRectangle(0, 0, w, h, Fade(BLACK, 0.5f));
+        DrawText("Press ENTER to restart", w/2 - 140, h/2, 20, WHITE);
+
+        if (IsKeyPressed(KEY_ENTER))
+        {
+            DeleteSaveGame();
+            ResetGame();
+            return MENU;
+        }
     }
-}
 
-    /* overlays last */
     EventsDrawOverlay();
-
     return endingType;
 }

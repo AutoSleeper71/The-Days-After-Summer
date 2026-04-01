@@ -607,15 +607,43 @@ GameState UpdateLevel3(void)
     if (!initialized)
         InitLevel3State();
 
+    if (IsKeyPressed(KEY_ESCAPE) && !IsSettingsMenuOpen())
+    {
+        OpenPauseMenu();
+        return LEVEL3;
+    }
+
     if (phase == PHASE_DIALOG)
     {
-        EventsUpdate();
-
         Texture2D *bgTex = EventsGetCurrentBackground();
         if (bgTex && bgTex->id)
             DrawTexture(*bgTex, 0, 0, WHITE);
         else
             DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), BLACK);
+
+        if (IsSettingsMenuOpen())
+        {
+            EventsDrawOverlay();
+            DrawIntroFadeOverlay();
+
+            {
+                SettingsResult settings = UpdateAndDrawSettingsMenu();
+                if (settings == SETTINGS_RESULT_GO_TO_MENU)
+                {
+                    if (musicPlaying)
+                    {
+                        StopMusicStream(battleMusic);
+                        musicPlaying = false;
+                    }
+                    SaveGameForState(LEVEL3);
+                    return MENU;
+                }
+                if (settings == SETTINGS_RESULT_EXIT) return GAME_EXIT;
+            }
+            return LEVEL3;
+        }
+
+        EventsUpdate();
 
         if (introFadeActive)
         {
@@ -640,7 +668,6 @@ GameState UpdateLevel3(void)
                 if (!waitingEvent)
                 {
                     DialogEvent ev = DialogUpdate(&dialog);
-
                     if (ev != EVENT_NONE)
                     {
                         DialogNode *n = &dialog.nodes[dialog.index];
@@ -655,7 +682,6 @@ GameState UpdateLevel3(void)
             else
             {
                 phase = PHASE_BATTLE;
-
                 if (musicLoaded && !musicPlaying)
                 {
                     PlayMusicStream(battleMusic);
@@ -671,11 +697,48 @@ GameState UpdateLevel3(void)
 
     if (phase == PHASE_BATTLE)
     {
+        DrawBattle();
+
+        if (IsSettingsMenuOpen())
+        {
+            SettingsResult settings = UpdateAndDrawSettingsMenu();
+            if (settings == SETTINGS_RESULT_GO_TO_MENU)
+            {
+                if (musicPlaying)
+                {
+                    StopMusicStream(battleMusic);
+                    musicPlaying = false;
+                }
+                SaveGameForState(LEVEL3);
+                return MENU;
+            }
+            if (settings == SETTINGS_RESULT_EXIT) return GAME_EXIT;
+            return LEVEL3;
+        }
+
         if (musicPlaying)
             UpdateMusicStream(battleMusic);
 
         UpdateBattle();
-        DrawBattle();
+        return LEVEL3;
+    }
+
+    DrawBattle();
+
+    if (IsSettingsMenuOpen())
+    {
+        SettingsResult settings = UpdateAndDrawSettingsMenu();
+        if (settings == SETTINGS_RESULT_GO_TO_MENU)
+        {
+            if (musicPlaying)
+            {
+                StopMusicStream(battleMusic);
+                musicPlaying = false;
+            }
+            SaveGameForState(LEVEL3);
+            return MENU;
+        }
+        if (settings == SETTINGS_RESULT_EXIT) return GAME_EXIT;
         return LEVEL3;
     }
 
@@ -690,24 +753,17 @@ GameState UpdateLevel3(void)
     }
 
     UpdateBattle();
-    DrawBattle();
 
     if (IsKeyPressed(KEY_ENTER))
     {
         if (battle.playerWon)
-        {
             angerBad++;
-            nextLevel = LEVEL4;
-            initialized = false;
-            return ELEVATOR;
-        }
         else
-        {
             angerBad = 0;
-            nextLevel = LEVEL4;
-            initialized = false;
-            return ELEVATOR;
-        }
+
+        nextLevel = LEVEL4;
+        initialized = false;
+        return ELEVATOR;
     }
 
     return LEVEL3;

@@ -341,46 +341,75 @@ GameState UpdateLevel1(void)
         return LEVEL1;
     }
 
-    EventsUpdate();
-
-    GameState requestedState;
-    if (EventsConsumeTransition(&requestedState))
+    if (IsKeyPressed(KEY_ESCAPE) && !IsSettingsMenuOpen())
     {
-        level1Initialized = false;
-        if (requestedState == LEVEL2) level2Unlocked = 1;
-        return requestedState;
+        OpenPauseMenu();
+        return LEVEL1;
     }
 
-    Texture2D *bg = EventsGetCurrentBackground();
-    if (bg && bg->id != 0)
-        DrawTexture(*bg, 0, 0, WHITE);
-    else
-        DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), BLACK);
-
-    Texture2D *avatar = EventsGetCurrentAvatar();
-    if (avatar && avatar->id != 0)
     {
-        float scale = 1.5f;
-        DrawTexturePro(
-            *avatar,
-            (Rectangle){0, 0, (float)avatar->width, (float)avatar->height},
-            (Rectangle){
-                GetScreenWidth() - avatar->width * scale - 50,
-                GetScreenHeight() - avatar->height * scale,
-                avatar->width * scale,
-                avatar->height * scale
-            },
-            (Vector2){0, 0},
-            0.0f,
-            WHITE
-        );
+        Texture2D *bg = EventsGetCurrentBackground();
+        if (bg && bg->id != 0)
+            DrawTexture(*bg, 0, 0, WHITE);
+        else
+            DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), BLACK);
+    }
+
+    {
+        Texture2D *avatar = EventsGetCurrentAvatar();
+        if (avatar && avatar->id != 0)
+        {
+            float scale = 1.5f;
+            DrawTexturePro(
+                *avatar,
+                (Rectangle){0, 0, (float)avatar->width, (float)avatar->height},
+                (Rectangle){
+                    GetScreenWidth() - avatar->width * scale - 50,
+                    GetScreenHeight() - avatar->height * scale,
+                    avatar->width * scale,
+                    avatar->height * scale
+                },
+                (Vector2){0, 0},
+                0.0f,
+                WHITE
+            );
+        }
+    }
+
+    if (IsSettingsMenuOpen())
+    {
+        EventsDrawOverlay();
+        DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(BLACK, 0.08f));
+
+        {
+            SettingsResult settings = UpdateAndDrawSettingsMenu();
+            if (settings == SETTINGS_RESULT_GO_TO_MENU)
+            {
+                SaveGameForState(LEVEL1);
+                return MENU;
+            }
+            if (settings == SETTINGS_RESULT_EXIT) return GAME_EXIT;
+        }
+        return LEVEL1;
+    }
+
+    EventsUpdate();
+
+    {
+        GameState requestedState;
+        if (EventsConsumeTransition(&requestedState))
+        {
+            level1Initialized = false;
+            if (requestedState == LEVEL2) level2Unlocked = 1;
+            return requestedState;
+        }
     }
 
     if (introFadeActive)
     {
+        float fadeAlpha;
         introFadeTimer += GetFrameTime();
-
-        float fadeAlpha = 1.0f - (introFadeTimer / LEVEL1_START_FADE_TIME);
+        fadeAlpha = 1.0f - (introFadeTimer / LEVEL1_START_FADE_TIME);
         if (fadeAlpha < 0.0f) fadeAlpha = 0.0f;
 
         DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(BLACK, fadeAlpha));
@@ -392,8 +421,7 @@ GameState UpdateLevel1(void)
         return LEVEL1;
     }
 
-    // Once the event system has finished its animation/overlay, dialogue can continue from the next node.
-        if (waitingOnEvent && !level1Dialog.finished && !EventsBusy())
+    if (waitingOnEvent && !level1Dialog.finished && !EventsBusy())
     {
         waitingOnEvent = false;
         DialogResume(&level1Dialog);
@@ -402,12 +430,14 @@ GameState UpdateLevel1(void)
     if (!level1Dialog.finished)
     {
         if (EventsShouldBlockInput())
+        {
+            EventsDrawOverlay();
             return LEVEL1;
+        }
 
         if (!waitingOnEvent)
         {
             DialogEvent ev = DialogUpdate(&level1Dialog);
-
             if (ev != EVENT_NONE)
             {
                 DialogNode *node = &level1Dialog.nodes[level1Dialog.index];

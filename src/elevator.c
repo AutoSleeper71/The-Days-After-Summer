@@ -442,46 +442,9 @@ static const DialogNode toLevel4Template[] =
 {
     {
         "Daniel",
-        "It is quieter now.",
-        EVENT_CHANGE_BACKGROUND | EVENT_FADE_IN | EVENT_AVATAR_SHOW | EVENT_PLAY_SOUND,
-        BG_INSIDE, AVATAR_NEUTRAL, SOUND_ELEVATOR_SCARY,
-        INSPECT_NONE,
-        0, {}, 1
-    },
-    {
-        "Daniel",
-        "Too quiet.",
-        EVENT_NONE,
-        BG_NONE, AVATAR_NONE, SOUND_NONE,
-        INSPECT_NONE,
-        2,
-        {
-            {"Listen to the silence", 2},
-            {"Look away", 3}
-        },
-        -1
-    },
-    {
-        "Daniel",
-        "It feels heavier every time the doors close.",
-        EVENT_NONE,
-        BG_NONE, AVATAR_NONE, SOUND_NONE,
-        INSPECT_NONE,
-        0, {}, 4
-    },
-    {
-        "Daniel",
-        "Maybe there is nothing left to say.",
-        EVENT_STOP_SOUNDS,
-        BG_NONE, AVATAR_NONE, SOUND_ELEVATOR_SCARY,
-        INSPECT_NONE,
-        0, {}, 4
-    },
-    {
-        "Daniel",
         "One more floor.",
-        EVENT_PLAY_SOUND | EVENT_FADE_OUT | EVENT_GO_LEVEL4,
-        BG_NONE, AVATAR_NONE, SOUND_ELEVATOR_DING,
+        EVENT_PLAY_SOUND | EVENT_GO_LEVEL4,
+        BG_INSIDE, AVATAR_NEUTRAL, SOUND_ELEVATOR_DING,
         INSPECT_NONE,
         0, {}, -1
     }
@@ -564,25 +527,31 @@ GameState UpdateElevator(void)
     Texture2D *avatar;
     Vector2 shake;
 
-    if(introPlaying && nextLevel == LEVEL1)
+    if (IsKeyPressed(KEY_ESCAPE) && !IsSettingsMenuOpen())
+    {
+        OpenPauseMenu();
+        return ELEVATOR;
+    }
+
+    if (introPlaying && nextLevel == LEVEL1)
     {
         int w = GetScreenWidth();
         int h = GetScreenHeight();
         Texture2D *introBg = EventsGetCurrentBackground();
 
-        if(introBg != NULL)
+        if (introBg != NULL && introBg->id != 0)
             DrawTexture(*introBg, 0, 0, WHITE);
+        else
+            DrawRectangle(0, 0, w, h, BLACK);
 
-        if(introState == 0)
+        if (introState == 0)
         {
             introFadeAlpha += GetFrameTime() / 2.0f;
-
-            if(introFadeAlpha >= 1.0f)
+            if (introFadeAlpha >= 1.0f)
             {
                 introFadeAlpha = 1.0f;
                 introState = 1;
             }
-
             DrawRectangle(0, 0, w, h, Fade(BLACK, 1.0f - introFadeAlpha));
         }
         else
@@ -592,9 +561,9 @@ GameState UpdateElevator(void)
 
             introEyelidTimer += GetFrameTime();
 
-            if(introEyelidTimer < dur)
+            if (introEyelidTimer < dur)
                 lid = (h / 2.0f) * (introEyelidTimer / dur);
-            else if(introEyelidTimer < dur * 2.0f)
+            else if (introEyelidTimer < dur * 2.0f)
                 lid = (h / 2.0f) * (1.0f - ((introEyelidTimer - dur) / dur));
             else
                 introPlaying = false;
@@ -603,37 +572,34 @@ GameState UpdateElevator(void)
             DrawRectangle(0, h - (int)lid, w, (int)lid, BLACK);
         }
 
+        if (IsSettingsMenuOpen())
+        {
+            SettingsResult settings = UpdateAndDrawSettingsMenu();
+            if (settings == SETTINGS_RESULT_GO_TO_MENU)
+            {
+                SaveGameForState(ELEVATOR);
+                return MENU;
+            }
+            if (settings == SETTINGS_RESULT_EXIT) return GAME_EXIT;
+        }
+
         return ELEVATOR;
     }
 
-    EventsUpdate();
-
-    if(EventsConsumeTransition(&requestedState))
-        return requestedState;
-
-    if(waitingOnSceneEvent && !EventsBusy())
-    {
-        waitingOnSceneEvent = false;
-        DialogResume(&elevatorDialog);
-    }
-
-    shake = EventsGetShakeOffset();
     bg = EventsGetCurrentBackground();
+    shake = EventsGetShakeOffset();
 
-    if(bg != NULL && bg->id != 0)
+    if (bg != NULL && bg->id != 0)
         DrawTexture(*bg, (int)shake.x, (int)shake.y, WHITE);
     else
         DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), BLACK);
 
     avatar = EventsGetCurrentAvatar();
-
-    if(avatar != NULL)
+    if (avatar != NULL && avatar->id != 0)
     {
         float scale = 1.5f;
-
         float cw = avatar->width * scale;
         float ch = avatar->height * scale;
-
         float px = GetScreenWidth() - cw - 50;
         float py = GetScreenHeight() - ch;
 
@@ -647,34 +613,62 @@ GameState UpdateElevator(void)
         );
     }
 
-    if(!elevatorDialog.finished)
+    if (IsSettingsMenuOpen())
     {
-        if(EventsShouldBlockInput())
-            return ELEVATOR;
+        if (EventsIsDialogVisible())
+            DialogDraw(&elevatorDialog);
 
-        DialogEvent ev = DialogUpdate(&elevatorDialog);
+        EventsDrawOverlay();
 
-        if(ev != EVENT_NONE)
         {
-            DialogNode *node = &elevatorDialog.nodes[elevatorDialog.index];
+            SettingsResult settings = UpdateAndDrawSettingsMenu();
+            if (settings == SETTINGS_RESULT_GO_TO_MENU)
+            {
+                SaveGameForState(ELEVATOR);
+                return MENU;
+            }
+            if (settings == SETTINGS_RESULT_EXIT) return GAME_EXIT;
+        }
+        return ELEVATOR;
+    }
 
-            EventsTrigger(ev,
-                node->backgroundId,
-                node->avatarId,
-                node->soundId,
-                node->inspectId);
+    EventsUpdate();
 
-            if(EventsBusy())
-                waitingOnSceneEvent = true;
-            else
-                DialogResume(&elevatorDialog);
+    if (EventsConsumeTransition(&requestedState))
+        return requestedState;
+
+    if (waitingOnSceneEvent && !EventsBusy())
+    {
+        waitingOnSceneEvent = false;
+        DialogResume(&elevatorDialog);
+    }
+
+    if (!elevatorDialog.finished)
+    {
+        if (EventsShouldBlockInput())
+        {
+            EventsDrawOverlay();
+            return ELEVATOR;
         }
 
-        if(EventsIsDialogVisible())
+        {
+            DialogEvent ev = DialogUpdate(&elevatorDialog);
+            if (ev != EVENT_NONE)
+            {
+                DialogNode *node = &elevatorDialog.nodes[elevatorDialog.index];
+                EventsTrigger(ev, node->backgroundId, node->avatarId, node->soundId, node->inspectId);
+
+                if (EventsBusy())
+                    waitingOnSceneEvent = true;
+                else
+                    DialogResume(&elevatorDialog);
+            }
+        }
+
+        if (EventsIsDialogVisible())
             DialogDraw(&elevatorDialog);
     }
 
     EventsDrawOverlay();
     return ELEVATOR;
 }
-

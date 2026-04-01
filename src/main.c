@@ -1,9 +1,6 @@
-/* Main entry point of the game.
-   Creates the window/audio, runs the main state machine,
-   and initializes the next screen whenever the state changes. */
+/* Main entry point of the game. */
 
 #include "raylib.h"
-
 #include "game.h"
 #include "menu.h"
 #include "elevator.h"
@@ -17,25 +14,28 @@
 int screenWidth = 1920;
 int screenHeight = 1080;
 
-/* Program entry point.
-   Sets up the engine and keeps switching between scenes until the window closes. */
 int main(void)
 {
-    // ToggleFullscreen();
-    InitWindow(screenWidth, screenHeight, "500 Days of Summer");
+    InitWindow(GetMonitorWidth(0), GetMonitorHeight(0), "500 Days of Summer");
+    SetWindowState(FLAG_FULLSCREEN_MODE);
+    SetExitKey(KEY_NULL);
+
     InitAudioDevice();
-    
+    ApplyMasterVolume();
+
     HideCursor();
     SetTargetFPS(60);
 
     InitMenu();
+    BeginDrawing();
+    ClearBackground(BLACK);
     DrawText("Loading...", 500, 350, 30, WHITE);
     EndDrawing();
     EventsLoadResources();
 
     GameState state = MENU;
 
-    while (!WindowShouldClose())
+    while (state != GAME_EXIT && !WindowShouldClose())
     {
         GameState newState = state;
 
@@ -44,17 +44,19 @@ int main(void)
 
         switch(state)
         {
-            case MENU:    newState = UpdateMenu(); break;
-            case ELEVATOR:newState = UpdateElevator(); break;
-            case LEVEL1:  newState = UpdateLevel1(); break;
-            case LEVEL2:  newState = UpdateLevel2(); break;
-            case LEVEL3:  newState = UpdateLevel3(); break;
-            case LEVEL4:  newState = UpdateLevel4(); break;
-
+            case MENU: newState = UpdateMenu(); break;
+            case ELEVATOR: newState = UpdateElevator(); break;
+            case LEVEL1: newState = UpdateLevel1(); break;
+            case LEVEL2: newState = UpdateLevel2(); break;
+            case LEVEL3: newState = UpdateLevel3(); break;
+            case LEVEL4: newState = UpdateLevel4(); break;
             case ENDING_GOOD:
             case ENDING_SLIGHTLY_BAD:
             case ENDING_BAD:
                 newState = UpdateEnding(state);
+                break;
+            case GAME_EXIT:
+                newState = GAME_EXIT;
                 break;
         }
 
@@ -62,9 +64,10 @@ int main(void)
 
         if (newState != state)
         {
+            CloseSettingsMenu();
+
             if (newState == MENU)
             {
-                ResetGame();
                 InitMenu();
             }
             else if (newState == ELEVATOR)
@@ -82,8 +85,8 @@ int main(void)
         state = newState;
     }
 
+    UnloadMenu();
     CloseAudioDevice();
     CloseWindow();
-
     return 0;
 }

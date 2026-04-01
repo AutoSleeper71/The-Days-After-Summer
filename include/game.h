@@ -5,10 +5,7 @@
 #define GAME_H
 
 #include "raylib.h"
-
-
-
-// states of the game, to know where we are and where to go next
+#include <stdbool.h>
 
 /* High-level game screens.
    The main loop switches on this enum every frame. */
@@ -22,16 +19,21 @@ typedef enum
     LEVEL4,
     ENDING_GOOD,
     ENDING_SLIGHTLY_BAD,
-    ENDING_BAD
+    ENDING_BAD,
+    GAME_EXIT
 } GameState;
 
-// Scene scripts write to this before returning to the elevator so the elevator knows where to go next.
+/* Result returned by the shared settings overlay. */
+typedef enum
+{
+    SETTINGS_RESULT_NONE,
+    SETTINGS_RESULT_BLOCK,
+    SETTINGS_RESULT_GO_TO_MENU,
+    SETTINGS_RESULT_EXIT
+} SettingsResult;
+
 extern GameState nextLevel;
-
-// Cached ending value chosen at the end of the run.
 extern GameState finalEnding;
-
-// dialog system
 
 extern Texture2D NONE_TEXTURE;
 
@@ -42,24 +44,30 @@ int Dialog(Texture2D portrait,
            const char *opt2,
            const char *opt3);
 
-// needed to not write one same code again, but ill fix it later
 extern int screenWidth;
 extern int screenHeight;
 
-// ending system
-// Ending counters collected across levels.
 extern int angerBad;
 extern int depressionBad;
-// extern int weirdAnswer;
-
-// unlocking levels system
 
 extern int level1Unlocked;
 extern int level2Unlocked;
 extern int level3Unlocked;
 extern int level4Unlocked;
 
-// reset
-void ResetGame();
+extern float masterVolume;
+void ApplyMasterVolume(void);
+void OpenSettingsMenu(void);
+void OpenPauseMenu(void);
+void CloseSettingsMenu(void);
+bool IsSettingsMenuOpen(void);
+SettingsResult UpdateAndDrawSettingsMenu(void);
+
+void ResetGame(void);
+
+bool HasSaveGame(void);
+void DeleteSaveGame(void);
+void SaveGameForState(GameState state);
+GameState LoadSavedGame(void);
 
 #endif

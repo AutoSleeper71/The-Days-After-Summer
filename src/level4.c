@@ -149,50 +149,55 @@ GameState UpdateLevel4(void)
     if (!initialized)
         return LEVEL4;
 
+    if (IsKeyPressed(KEY_ESCAPE) && !IsSettingsMenuOpen())
+    {
+        OpenPauseMenu();
+        return LEVEL4;
+    }
 
-    // =========================
-    // START SCREEN
-    // =========================
     if (state == LEVEL4_START)
     {
         DrawText("LEVEL 4 - DEPRESSION", w/2 - 220, h/2 - 80, 40, WHITE);
-
         DrawText("ENTER = try to fight this", w/2 - 120, h/2, 20, WHITE);
         DrawText("SPACE = give up", w/2 - 120, h/2 + 40, 20, GRAY);
 
+        {
+            SettingsResult settings = UpdateAndDrawSettingsMenu();
+            if (settings == SETTINGS_RESULT_GO_TO_MENU)
+            {
+                SaveGameForState(LEVEL4);
+                return MENU;
+            }
+            if (settings == SETTINGS_RESULT_EXIT) return GAME_EXIT;
+            if (settings != SETTINGS_RESULT_NONE) return LEVEL4;
+        }
+
         if (IsKeyPressed(KEY_SPACE))
         {
-            // skip = heavy penalty
             depressionBad += 2;
-
             finalEnding = EvaluateEnding();
             nextLevel = finalEnding;
-
             initialized = false;
             return ELEVATOR;
         }
 
         if (IsKeyPressed(KEY_ENTER))
-        {
             state = LEVEL4_DIALOG;
-        }
 
         return LEVEL4;
     }
 
-
-    // =========================
-    // DIALOG
-    // =========================
     if (state == LEVEL4_DIALOG)
     {
-        EventsUpdate();
-
         Texture2D *bg = EventsGetCurrentBackground();
+        Texture2D *avatar;
+
         if (bg && bg->id)
             DrawTexture(*bg, 0, 0, WHITE);
+        else
+            DrawRectangle(0, 0, w, h, BLACK);
 
-        Texture2D *avatar = EventsGetCurrentAvatar();
+        avatar = EventsGetCurrentAvatar();
         if (avatar && avatar->id)
         {
             float s = 1.5f;
@@ -202,6 +207,23 @@ GameState UpdateLevel4(void)
                             avatar->width*s, avatar->height*s},
                 (Vector2){0,0}, 0, WHITE);
         }
+
+        if (IsSettingsMenuOpen())
+        {
+            EventsDrawOverlay();
+            {
+                SettingsResult settings = UpdateAndDrawSettingsMenu();
+                if (settings == SETTINGS_RESULT_GO_TO_MENU)
+                {
+                    SaveGameForState(LEVEL4);
+                    return MENU;
+                }
+                if (settings == SETTINGS_RESULT_EXIT) return GAME_EXIT;
+            }
+            return LEVEL4;
+        }
+
+        EventsUpdate();
 
         if (waitingOnEvent && !dialog.finished && !EventsBusy())
         {
@@ -214,7 +236,6 @@ GameState UpdateLevel4(void)
             if (!waitingOnEvent)
             {
                 DialogEvent ev = DialogUpdate(&dialog);
-
                 if (ev != EVENT_NONE)
                 {
                     DialogNode *n = &dialog.nodes[dialog.index];
@@ -235,40 +256,44 @@ GameState UpdateLevel4(void)
         return LEVEL4;
     }
 
-
-    // MINIGAME ITSELF
-    
-if (state == LEVEL4_MINIGAME)
-{
-    if (!zumaInitialized)
+    if (state == LEVEL4_MINIGAME)
     {
-        ResetMinigameProgress();
-        InitMinigame();
-        zumaInitialized = true;
+        if (!zumaInitialized)
+        {
+            ResetMinigameProgress();
+            InitMinigame();
+            zumaInitialized = true;
+        }
+
+        UpdateMinigame();
+        DrawMinigame();
+        DrawText("Clear the chain.", 20, h - 60, 24, LIGHTGRAY);
+
+        {
+            SettingsResult settings = UpdateAndDrawSettingsMenu();
+            if (settings == SETTINGS_RESULT_GO_TO_MENU)
+            {
+                SaveGameForState(LEVEL4);
+                return MENU;
+            }
+            if (settings == SETTINGS_RESULT_EXIT) return GAME_EXIT;
+            if (settings != SETTINGS_RESULT_NONE) return LEVEL4;
+        }
+
+        if (ShouldExitMinigame())
+        {
+            int score = GetMinigameScore();
+            if (score <= 1) depressionBad += 2;
+            else if (score == 2) depressionBad += 1;
+
+            finalEnding = EvaluateEnding();
+            nextLevel = finalEnding;
+            initialized = false;
+            return ELEVATOR;
+        }
+
+        return LEVEL4;
     }
-
-    UpdateMinigame();
-    DrawMinigame();
-
-    DrawText("Clear the chain.", 20, h - 60, 24, LIGHTGRAY);
-
-    // НОВАЯ логика выхода
-    if (ShouldExitMinigame())
-    {
-        int score = GetMinigameScore();
-
-        if (score <= 1) depressionBad += 2;
-        else if (score == 2) depressionBad += 1;
-
-        finalEnding = EvaluateEnding();
-        nextLevel = finalEnding;
-
-        initialized = false;
-        return ELEVATOR;
-    }
-
-    return LEVEL4;
-}
 
     return LEVEL4;
 }
