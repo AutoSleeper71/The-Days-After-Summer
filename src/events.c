@@ -706,14 +706,28 @@ void EventsDrawOverlay(void)
 
     if(inspecting)
     {
+        const int titleX = 50;
+        const int titleY = 50;
+        const int titleSize = 34;
+        const int itemX = 70;
+        const int itemY = 135;
+        const int itemSpacing = 48;
+        const int itemSize = 34;
+        const int checkX = 520;
+        const int descBoxX = 40;
+        const int descBoxY = h - 250;
+        const int descBoxW = w - 80;
+        const int descBoxH = 180;
+
         DrawRectangle(0, 0, w, h, Fade(BLACK, 0.85f));
-        DrawText("Inspect", 50, 50, 30, WHITE);
+        DrawText("Inspect", titleX, titleY, titleSize, WHITE);
 
         for(int i = 0; i < menu.count; i++)
         {
+            int y = itemY + i * itemSpacing;
             Color c = (i == menuIndex) ? YELLOW : WHITE;
-            DrawText(menu.items[i], 80, 120 + i * 40, 28, c);
-            if(menu.checked[i]) DrawText("[x]", 300, 120 + i * 40, 28, GREEN);
+            DrawText(menu.items[i], itemX, y, itemSize, c);
+            if(menu.checked[i]) DrawText("[x]", checkX, y, itemSize, GREEN);
         }
 
         if(showingDesc)
@@ -722,12 +736,22 @@ void EventsDrawOverlay(void)
 
             if(img && img->id != 0)
             {
-                float scale = 0.4f;
-                DrawTextureEx(*img, (Vector2){ w/2 - img->width*scale/2, h/2 - 150 }, 0, scale, WHITE);
+                float maxW = w * 0.34f;
+                float maxH = h * 0.28f;
+                float scaleX = maxW / img->width;
+                float scaleY = maxH / img->height;
+                float scale = (scaleX < scaleY) ? scaleX : scaleY;
+
+                if (scale < 0.65f) scale = 0.65f;
+
+                DrawTextureEx(*img,
+                    (Vector2){ w/2 - img->width*scale/2, h/2 - img->height*scale/2 - 40 },
+                    0, scale, WHITE);
             }
 
-            DrawRectangle(50, h - 200, w - 100, 150, Fade(BLACK, 0.95f));
-            DrawWrappedTextSimple(menu.descriptions[menuIndex], 70, h - 160, w - 140, 22, 2, WHITE);
+            DrawRectangle(descBoxX, descBoxY, descBoxW, descBoxH, Fade(BLACK, 0.95f));
+            DrawRectangleLines(descBoxX, descBoxY, descBoxW, descBoxH, Fade(RAYWHITE, 0.70f));
+            DrawWrappedTextSimple(menu.descriptions[menuIndex], descBoxX + 24, descBoxY + 28, descBoxW - 48, 30, 2, WHITE);
         }
         return;
     }
