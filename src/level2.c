@@ -162,11 +162,11 @@ static const DialogNode level2Template[] =
       EVENT_INSPECT_START, BG_NONE, AVATAR_NONE, SOUND_NONE,
       INSPECT_L2_LETTER, 0, {}, 15 },
 
-    { "Narration", "And now she reads them out loud.",
+    { "Narration", "And now she reads",
       EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE,
       INSPECT_NONE, 0, {}, 16 },
 
-    { "Narration", "",
+    { "Narration", "And then she says them out loud.",
       EVENT_SHOW_CARD, BG_NONE, AVATAR_NONE, SOUND_NONE,
       CARD_L2_PROPOSAL, 0, {}, 17 },
 

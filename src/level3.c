@@ -192,7 +192,7 @@ static const DialogNode template[] = {
     { "Narration", "In your head, the conversation twists into something uglier.",
       EVENT_CHANGE_BACKGROUND | EVENT_FADE_IN, BG_L2_DINER_BOOTH, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 10 },
 
-    { "Narration", "Not your friend. Not really.",
+    { "Narration", "Not your friend.",
       EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 11 },
 
     { "Narration", "Just the part of you that would rather lash out than listen.",

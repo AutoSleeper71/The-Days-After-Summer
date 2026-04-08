@@ -20,9 +20,9 @@ void InitMenu(void)
     titleScreen_timer = 0.0f;
     show_menu = 0;
 
-    if (!titleScreen.id) titleScreen = LoadTexture("assets/titleScreen.png");
-    if (!moveSound.frameCount) moveSound = LoadSound("assets/choose_option.mp3");
-    if (!backgroundMusic.ctxData) backgroundMusic = LoadMusicStream("assets/title_screen_song.mp3");
+    if (!titleScreen.id) titleScreen = LoadTexture("assets/background/titleScreen.png");
+    if (!moveSound.frameCount) moveSound = LoadSound("assets/audio/choose_option.mp3");
+    if (!backgroundMusic.ctxData) backgroundMusic = LoadMusicStream("assets/audio/title_screen_song.mp3");
 
     SetMusicVolume(backgroundMusic, 1.0f);
     ApplyMasterVolume();

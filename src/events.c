@@ -5,6 +5,12 @@
 #include <stddef.h>
 #include <string.h>
 
+#define ASSET_ROOT      "assets/"
+#define ASSET_BG        ASSET_ROOT "background/"
+#define ASSET_ITEM      ASSET_ROOT "item/"
+#define ASSET_AUDIO     ASSET_ROOT "audio/"
+#define ASSET_AVATAR    ASSET_ROOT "avatar/"
+
 // These pointers always describe what the current scene should draw right now.
 static Texture2D *currentBG = NULL;
 static Texture2D *currentAvatar = NULL;
@@ -35,7 +41,7 @@ static GameState pendingState = MENU;
 
 // all the resources used by events, loaded at the start of the game and freed at the end
 
-static Texture2D bgOutside, bgInside, bgRoom, bgBathroom, bgLobby;
+static Texture2D bgOutside, bgInside, bgRoom, bgBathroom, bgLobby, bgLobbyBack;
 static Texture2D bgNeutralEnding, bgHappyEnding, bgBadEnding;
 static Texture2D bgL1Diner, bgL1Booth, bgL1Her, bgL1DinerEmpty, bgL1Park, bgL1ParkEmpty, bgL1Hospital;
 static Texture2D bgL2Diner, bgL2Booth;
@@ -220,6 +226,7 @@ static void SetBackground(int id)
         case BG_ROOM: currentBG = &bgRoom; break;
         case BG_BATHROOM: currentBG = &bgBathroom; break;
         case BG_LOBBY: currentBG = &bgLobby; break;
+        case BG_LOBBY_BACK: currentBG = &bgLobbyBack; break;
         case BG_NEUTRAL_ENDING: currentBG = &bgNeutralEnding; break;
         case BG_HAPPY_ENDING: currentBG = &bgHappyEnding; break;
         case BG_BAD_ENDING: currentBG = &bgBadEnding; break;
@@ -413,58 +420,59 @@ void EventsLoadResources(void)
     if(resourcesLoaded) return;
     resourcesLoaded = true;
 
-    FileLoadTexture(&bgOutside, "assets/elevator_outside.jpg");
-    FileLoadTexture(&bgInside, "assets/elevator_inside.jpg");
-    FileLoadTexture(&bgRoom, "assets/room.jpg");
-    FileLoadTexture(&bgBathroom, "assets/bathroom.png");
-    FileLoadTexture(&bgLobby, "assets/charWithColleges.png");
+    FileLoadTexture(&bgOutside, ASSET_BG "elevator_outside.jpg");
+    FileLoadTexture(&bgInside, ASSET_BG "elevator_inside.jpg");
+    FileLoadTexture(&bgRoom, ASSET_BG "room.jpg");
+    FileLoadTexture(&bgBathroom, ASSET_BG "bathroom.png");
+    FileLoadTexture(&bgLobby, ASSET_BG "charWithColleges.png");
+    FileLoadTexture(&bgLobbyBack, "assets/background/BackOfFriends.png");
 
-    FileLoadTexture(&bgNeutralEnding, "assets/NeutralEnding.png");
-    FileLoadTexture(&bgHappyEnding, "assets/HappyEnding.png");
-    FileLoadTexture(&bgBadEnding, "assets/sad_ending.jpg");   
+    FileLoadTexture(&bgNeutralEnding, ASSET_BG "NeutralEnding.png");
+    FileLoadTexture(&bgHappyEnding, ASSET_BG "HappyEnding.png");
+    FileLoadTexture(&bgBadEnding, ASSET_BG "sad_ending.jpg");   
 
-    FileLoadTexture(&bgL1Diner, "assets/Diner.png");
-    FileLoadTexture(&bgL1Booth, "assets/Diner.png");
-    FileLoadTexture(&bgL1Her, "assets/Diner.png");
-    FileLoadTexture(&bgL1DinerEmpty, "assets/EmptyDiner.png");
-    FileLoadTexture(&bgL1Park, "assets/MorningPark.png");
-    FileLoadTexture(&bgL1ParkEmpty, "assets/EveningPark.png");
-    FileLoadTexture(&bgL1Hospital, "assets/room.png");
+    FileLoadTexture(&bgL1Diner, ASSET_BG "Diner.png");
+    FileLoadTexture(&bgL1Booth, ASSET_BG "Diner.png");
+    FileLoadTexture(&bgL1Her, ASSET_BG "Diner.png");
+    FileLoadTexture(&bgL1DinerEmpty, ASSET_BG "EmptyDiner.png");
+    FileLoadTexture(&bgL1Park, ASSET_BG "MorningPark.png");
+    FileLoadTexture(&bgL1ParkEmpty, ASSET_BG "EveningPark.png");
+    FileLoadTexture(&bgL1Hospital, ASSET_BG "room.png");
 
-    FileLoadTexture(&bgL2Diner, "assets/Diner.png");
-    FileLoadTexture(&bgL2Booth, "assets/Diner.png");
+    FileLoadTexture(&bgL2Diner, ASSET_BG "Diner.png");
+    FileLoadTexture(&bgL2Booth, ASSET_BG "Diner.png");
 
-    FileLoadTexture(&avatarNeutral, "assets/character.png");
-    FileLoadTexture(&avatarConfused, "assets/character.png");
-    FileLoadTexture(&avatarSad, "assets/HappyMan.png");
-    FileLoadTexture(&avatarGirlHappy, "assets/Happy.png");
-    FileLoadTexture(&avatarGirlDisappointed, "assets/Disapointed.png");
+    FileLoadTexture(&avatarNeutral, ASSET_AVATAR "character.png");
+    FileLoadTexture(&avatarConfused, ASSET_AVATAR "character.png");
+    FileLoadTexture(&avatarSad, ASSET_AVATAR "HappyMan.png");
+    FileLoadTexture(&avatarGirlHappy, ASSET_AVATAR "Happy.png");
+    FileLoadTexture(&avatarGirlDisappointed, ASSET_AVATAR "Disapointed.png");
 
-    FileLoadTexture(&imgMirror, "assets/mirror.png");
-    FileLoadTexture(&imgToothbrush, "assets/Toothbrushes.png");
-    FileLoadTexture(&imgDuck, "assets/rubberDuck.png");
+    FileLoadTexture(&imgMirror, ASSET_ITEM "mirror.png");
+    FileLoadTexture(&imgToothbrush, ASSET_ITEM "Toothbrushes.png");
+    FileLoadTexture(&imgDuck, ASSET_ITEM "rubberDuck.png");
 
-    FileLoadTexture(&imgSpaghetti, "assets/Spaghetti.png");
-    FileLoadTexture(&imgSteak, "assets/Steak.png");
-    FileLoadTexture(&imgBurger, "assets/BeefBurger.png");
-    FileLoadTexture(&imgLetter, "assets/letter.png");
+    FileLoadTexture(&imgSpaghetti, ASSET_ITEM "Spaghetti.png");
+    FileLoadTexture(&imgSteak, ASSET_ITEM "Steak.png");
+    FileLoadTexture(&imgBurger, ASSET_ITEM "BeefBurger.png");
+    FileLoadTexture(&imgLetter, ASSET_ITEM "letter.png");
 
-    FileLoadTexture(&imgSandwich, "assets/Sandwich.png");
-    FileLoadTexture(&imgLemonade, "assets/Lemonade.png");
+    FileLoadTexture(&imgSandwich, ASSET_ITEM "Sandwich.png");
+    FileLoadTexture(&imgLemonade, ASSET_ITEM "Lemonade.png");
 
-    FileLoadSound(&sndDing, "assets/choose_option.mp3");
-    FileLoadSound(&sndScary, "assets/elevatorScarySound.wav");
-    FileLoadSound(&sndElevator, "assets/elevatorDing.wav");
-    FileLoadSound(&sndLight, "assets/light.wav");
-    FileLoadSound(&sndTalking, "assets/talking.wav");
-    FileLoadSound(&sndCall, "assets/calling.mp3");
-    FileLoadSound(&sndGoodEnd, "assets/goodending.mp3");
-    FileLoadSound(&sndNeutEnd, "assets/neutralending.mp3");
+    FileLoadSound(&sndDing, ASSET_AUDIO "choose_option.mp3");
+    FileLoadSound(&sndScary, ASSET_AUDIO "elevatorScarySound.wav");
+    FileLoadSound(&sndElevator, ASSET_AUDIO "elevatorDing.wav");
+    FileLoadSound(&sndLight, ASSET_AUDIO "light.wav");
+    FileLoadSound(&sndTalking, ASSET_AUDIO "talking.wav");
+    FileLoadSound(&sndCall, ASSET_AUDIO "calling.mp3");
+    FileLoadSound(&sndGoodEnd, ASSET_AUDIO "goodending.mp3");
+    FileLoadSound(&sndNeutEnd, ASSET_AUDIO "neutralending.mp3");
     sndRumble = sndDing;
-    FileLoadSound(&sndMirror, "assets/mirror.wav");
-    FileLoadSound(&sndToothbrush, "assets/toothbrush.wav");
-    FileLoadSound(&sndDuck, "assets/rubberDuck.wav");
-    FileLoadSound(&sndPark, "assets/park.mp3");
+    FileLoadSound(&sndMirror, ASSET_AUDIO "mirror.wav");
+    FileLoadSound(&sndToothbrush, ASSET_AUDIO "toothbrush.wav");
+    FileLoadSound(&sndDuck, ASSET_AUDIO "rubberDuck.wav");
+    FileLoadSound(&sndPark, ASSET_AUDIO "park.mp3");
 }
 
 void EventsInit(void)

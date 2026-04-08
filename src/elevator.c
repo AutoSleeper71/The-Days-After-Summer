@@ -111,13 +111,13 @@ static const DialogNode introTemplate[] =
      INSPECT_NONE, 0, {}, 10},
 
     // 12
-    {"Daniel", "Ah... crap",
+    {"Narration", "You walk into the bathroom, almost being blinded by the bright fluorescent lights.",
      EVENT_CHANGE_BACKGROUND | EVENT_STOP_SOUNDS,
      BG_BATHROOM, AVATAR_NONE, SOUND_NONE,
      INSPECT_NONE, 0, {}, 13},
 
     // 13 (BATHROOM HUB)
-    {"Narration", "What should I do?",
+    {"Narration", "Wash up",
      EVENT_PLAY_SOUND,
      BG_NONE, AVATAR_NONE, SOUND_LIGHT,
      INSPECT_NONE,
@@ -136,7 +136,7 @@ static const DialogNode introTemplate[] =
      0, {}, 13},
 
     // 15 (EXIT)
-    {"Daniel", "I am so tired",
+    {"Narration", "Your tired eyes finally close.",
      EVENT_CHANGE_BACKGROUND | EVENT_STOP_SOUNDS | EVENT_AVATAR_HIDE | EVENT_FADE_IN,
      BG_LOBBY, AVATAR_NONE, SOUND_LIGHT,
      INSPECT_NONE, 0, {}, 16},
@@ -148,89 +148,78 @@ static const DialogNode introTemplate[] =
      INSPECT_NONE, 0, {}, 17},
 
     // 17
-    {"Narration", "You quickly scan the room.",
+    {"Narration", "You quickly scan the room, and see your old colleagues greeting you.",
      EVENT_NONE,
      BG_NONE, AVATAR_NONE, SOUND_NONE,
      INSPECT_NONE, 0, {}, 18},
 
     // 18
-    {"Colleague A", "Hey good morning!",
+    {"Colleague A", "Hey, good morning!",
      EVENT_NONE,
      BG_NONE, AVATAR_NONE, SOUND_NONE,
      INSPECT_NONE, 0, {}, 19},
 
     // 19 (CHOICE)
-    {"Colleague B", "Top of the morning!",
+    {"Colleague B", "Top of the morning to ya!",
      EVENT_NONE,
      BG_NONE, AVATAR_NONE, SOUND_NONE,
      INSPECT_NONE,
      2,
      {
         {"Ignore them", 20},
-        {"Greet them", 21}
+        {"Greet them back", 21}
      },
      -1},
 
-    // 20
-    {"Daniel", "No, thanks.",
-     EVENT_CHANGE_BACKGROUND | EVENT_STOP_SOUNDS | EVENT_AVATAR_SHOW,
-     BG_INSIDE, AVATAR_NEUTRAL, SOUND_TALKING,
+        // 20
+    {"Daniel", "No thanks.",
+     EVENT_NONE,
+     BG_NONE, AVATAR_NONE, SOUND_NONE,
      INSPECT_NONE, 0, {}, 22},
 
     // 21
     {"Narration", "Your voice fails you.",
-     EVENT_CHANGE_BACKGROUND | EVENT_STOP_SOUNDS | EVENT_AVATAR_SHOW | EVENT_FADE_IN,
-     BG_INSIDE, AVATAR_SAD, SOUND_TALKING,
+     EVENT_NONE,
+     BG_NONE, AVATAR_NONE, SOUND_NONE,
      INSPECT_NONE, 0, {}, 22},
 
     // 22
-    {"Narration", "You rush back into the elevator.",
-     EVENT_PLAY_SOUND,
-     BG_NONE, AVATAR_NONE, SOUND_ELEVATOR_SCARY,
+    {"Narration", "You then rush towards the elevator, walking as fast as you can.",
+     EVENT_CHANGE_BACKGROUND | EVENT_STOP_SOUNDS | EVENT_AVATAR_HIDE | EVENT_FADE_IN,
+     BG_LOBBY_BACK, AVATAR_NONE, SOUND_TALKING,
      INSPECT_NONE, 0, {}, 23},
 
     // 23
+    {"Colleague A", "It really shook him huh.",
+     EVENT_NONE,
+     BG_NONE, AVATAR_NONE, SOUND_NONE,
+     INSPECT_NONE, 0, {}, 24},
+
+    // 24
+    {"Colleague B", "Yeah it must have, he's stopped talking to anyone for a long time now, I wonder if he'll get over her.",
+    EVENT_CHANGE_BACKGROUND | EVENT_AVATAR_SHOW | EVENT_FADE_IN,
+     BG_INSIDE, AVATAR_NEUTRAL, SOUND_NONE, INSPECT_NONE, 0, {}, 25},
+
+    // 25
     {"Narration", "The elevator waits.",
      EVENT_NONE,
      BG_NONE, AVATAR_NONE, SOUND_NONE,
      INSPECT_NONE,
      2,
      {
-        {"Close door", 24},
-        {"Do nothing", 23}
-     },
-     -1},
-
-    // 24
-    {"Daniel", "Maybe I should try harder...",
-     EVENT_PLAY_SOUND,
-     BG_NONE, AVATAR_NONE, SOUND_ELEVATOR_SCARY,
-     INSPECT_NONE, 0, {}, 25},
-
-    // 25
-    {"Daniel", "Maybe more...",
-     EVENT_NONE,
-     BG_NONE, AVATAR_NONE, SOUND_NONE,
-     INSPECT_NONE,
-     1,
-     {
-        {"Close door", 26}
+        {"Close door", 26},
+        {"Do nothing", 25}
      },
      -1},
 
     // 26
-    {"Daniel", "Maybe even more...",
-     EVENT_NONE,
-     BG_NONE, AVATAR_NONE, SOUND_NONE,
-     INSPECT_NONE,
-     1,
-     {
-        {"Close door", 27}
-     },
-     -1},
+    {"Daniel", "Maybe I should try harder...",
+     EVENT_PLAY_SOUND,
+     BG_NONE, AVATAR_NONE, SOUND_ELEVATOR_SCARY,
+     INSPECT_NONE, 0, {}, 27},
 
     // 27
-    {"Daniel", "Please...",
+    {"Daniel", "Maybe more...",
      EVENT_NONE,
      BG_NONE, AVATAR_NONE, SOUND_NONE,
      INSPECT_NONE,
@@ -240,7 +229,29 @@ static const DialogNode introTemplate[] =
      },
      -1},
 
-    // 28 (FINAL)
+    // 28
+    {"Daniel", "Maybe even more...",
+     EVENT_NONE,
+     BG_NONE, AVATAR_NONE, SOUND_NONE,
+     INSPECT_NONE,
+     1,
+     {
+        {"Close door", 29}
+     },
+     -1},
+
+    // 29
+    {"Daniel", "Please...",
+     EVENT_NONE,
+     BG_NONE, AVATAR_NONE, SOUND_NONE,
+     INSPECT_NONE,
+     1,
+     {
+        {"Close door", 30}
+     },
+     -1},
+
+    // 30 (FINAL)
     {"Narration", "The elevator door finally closes...",
      EVENT_FADE_OUT | EVENT_GO_LEVEL1 | EVENT_STOP_SOUNDS,
      BG_NONE, AVATAR_NONE, SOUND_ELEVATOR,
