@@ -6,6 +6,7 @@
 #include "game.h"
 #include "dialog.h"
 #include "events.h"
+#include "dialog_scripts.h"
 
 #include <string.h>
 #include <stdbool.h>
@@ -160,47 +161,7 @@ static void LoadAssets(void)
     loaded = true;
 }
 
-/* Setup dialogue shown before the battle begins. */
-static const DialogNode template[] = {
-    { "Narration", "The elevator jerks to a stop before you can steady your breathing.",
-      EVENT_CHANGE_BACKGROUND | EVENT_PLAY_SOUND, BG_INSIDE, AVATAR_NONE, SOUND_ELEVATOR_SCARY, INSPECT_NONE, 0, {}, 1 },
 
-    { "Narration", "Your phone vibrates in your pocket.",
-      EVENT_PLAY_SOUND, BG_NONE, AVATAR_NONE, SOUND_CALL, INSPECT_NONE, 0, {}, 2 },
-
-    { "Friend", "Hey. Please pick up.",
-      EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 3 },
-
-    { "Friend", "You've been shutting everyone out since the break up.",
-      EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 4 },
-
-    { "Friend", "I know you're hurting, but disappearing like this isn't helping you.",
-      EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 5 },
-
-    { "You", "I don't know what to say anymore.",
-      EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 6 },
-
-    { "Friend", "Then start with something honest.",
-      EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 7 },
-
-    { "Friend", "Fight for yourself for once.",
-      EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 8 },
-
-    { "Narration", "The words hit harder than they should.",
-      EVENT_SHAKE_SCREEN, BG_NONE, AVATAR_NONE, SOUND_RUMBLE, INSPECT_NONE, 0, {}, 9 },
-
-    { "Narration", "In your head, the conversation twists into something uglier.",
-      EVENT_CHANGE_BACKGROUND | EVENT_FADE_IN, BG_L2_DINER_BOOTH, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 10 },
-
-    { "Narration", "Not your friend.",
-      EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 11 },
-
-    { "Narration", "Just the part of you that would rather lash out than listen.",
-      EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 12 },
-
-    { "You", "Then fine. I'll fight it.",
-      EVENT_AVATAR_SHOW | EVENT_FADE_OUT, BG_NONE, AVATAR_NEUTRAL, SOUND_NONE, INSPECT_NONE, 0, {}, -1 }
-};
 
 static void StartBattle(void)
 {
@@ -234,7 +195,7 @@ static void InitLevel3State(void)
 {
     LoadAssets();
 
-    memcpy(nodes, template, sizeof(template));
+    memcpy(nodes, LEVEL3_TEMPLATE, sizeof(DialogNode) * LEVEL3_TEMPLATE_COUNT);
     DialogStart(&dialog, nodes);
 
     EventsInit();

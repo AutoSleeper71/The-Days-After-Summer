@@ -10,6 +10,7 @@
         "src/game.c",
         "src/menu.c",
         "src/dialog.c",
+        "src/dialog_scripts.c",
         "src/events.c",
         "src/elevator.c",
         "src/level1.c",

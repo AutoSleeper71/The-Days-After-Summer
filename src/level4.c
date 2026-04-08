@@ -7,12 +7,11 @@
 #include "dialog.h"
 #include "events.h"
 #include "zuma.h"
+#include "dialog_scripts.h"
 
 #include <string.h>
 #include <stdbool.h>
 
-// Helper macro used to get the number of elements in a fixed-size array.
-#define ARRAY_COUNT(a) ((int)(sizeof(a) / sizeof((a)[0])))
 // File-specific compile-time limit used to size arrays safely.
 #define MAX_LEVEL4_NODES 64
 
@@ -61,32 +60,6 @@ static bool ValidateScript(const DialogNode *nodes, int count)
 }
 
 
-// DIALOG
-
-/* Short setup dialogue before the final minigame. */
-static const DialogNode template[] =
-{
-    { "Narration", "The next floor greets you with a quiet that feels almost kind.",
-      EVENT_CHANGE_BACKGROUND | EVENT_FADE_IN, BG_INSIDE, AVATAR_NONE, SOUND_NONE,
-      INSPECT_NONE, 0, {}, 1 },
-
-    { "Daniel", "No shouting. No panic. Just... emptiness.",
-      EVENT_AVATAR_SHOW, BG_NONE, AVATAR_NEUTRAL, SOUND_NONE,
-      INSPECT_NONE, 0, {}, 2 },
-
-    { "Narration", "A final memory drifts in front of you, asking only one thing.",
-      EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE,
-      INSPECT_NONE, 0, {}, 3 },
-
-    { "Narration", "Can you still reach for an answer, even now?",
-      EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE,
-      INSPECT_NONE, 0, {}, 4 },
-
-    { "Narration", "You step forward.",
-      EVENT_FADE_OUT | EVENT_AVATAR_HIDE, BG_NONE, AVATAR_NONE, SOUND_NONE,
-      INSPECT_NONE, 0, {}, -1 }
-};
-
 
 // ENDING EVALUATION
 
@@ -114,8 +87,8 @@ static void InitLevel4State(void)
     EventsInit();
     EventsTrigger(EVENT_CHANGE_BACKGROUND, BG_INSIDE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE);
 
-    int count = ARRAY_COUNT(template);
-    CopyScript(template, count);
+    int count = LEVEL4_TEMPLATE_COUNT;
+    CopyScript(LEVEL4_TEMPLATE, count);
 
     if (!ValidateScript(nodes, count))
     {
