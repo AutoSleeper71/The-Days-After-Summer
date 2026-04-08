@@ -30,45 +30,8 @@ static void CopyScript(const DialogNode *src, int count)
     memcpy(activeNodes, src, sizeof(DialogNode) * count);
 }
 
-static bool IsProtagonistSpeaker(const char *speaker)
-{
-    return (strcmp(speaker, "You") == 0) ||
-           (strcmp(speaker, "Him") == 0);
-}
 
-static bool IsGirlSpeaker(const char *speaker)
-{
-    return strcmp(speaker, "Her") == 0;
-}
 
-static int AvatarForSpeaker(const char *speaker)
-{
-    if (IsProtagonistSpeaker(speaker)) return AVATAR_NEUTRAL;
-    if (IsGirlSpeaker(speaker)) return AVATAR_GIRL_DISAPPOINTED;
-    return AVATAR_NONE;
-}
-
-/* preload only the NEXT avatar show so there are no blank avatar nodes */
-/* Preload the next speaking portrait to keep the scene visually smooth. */
-static void ApplyAvatarPreload(DialogNode *nodes, int count)
-{
-    for (int i = 0; i < count - 1; i++)
-    {
-        DialogNode *cur = &nodes[i];
-        DialogNode *next = &nodes[i + 1];
-
-        int nextAvatar = AvatarForSpeaker(next->speaker);
-
-        if (nextAvatar != AVATAR_NONE)
-        {
-            if ((cur->event & EVENT_AVATAR_HIDE) == 0)
-            {
-                cur->event |= EVENT_AVATAR_SHOW;
-                cur->avatarId = nextAvatar;
-            }
-        }
-    }
-}
 
 /* Guard against invalid next-node indices in the large branching script. */
 static bool ValidateScript(const DialogNode *nodes, int count)
@@ -101,8 +64,6 @@ static void InitLevel2State(void)
     waitingOnEvent = false;
     EventsInit();
     EventsTrigger(EVENT_CHANGE_BACKGROUND, BG_INSIDE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE);
-
-    ApplyAvatarPreload(activeNodes, count);
 
     if (!ValidateScript(activeNodes, count))
     {

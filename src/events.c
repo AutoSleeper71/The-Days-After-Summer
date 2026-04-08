@@ -41,7 +41,7 @@ static GameState pendingState = MENU;
 
 // all the resources used by events, loaded at the start of the game and freed at the end
 
-static Texture2D bgOutside, bgInside, bgRoom, bgBathroom, bgLobby, bgLobbyBack;
+static Texture2D bgOutside, bgInside, bgRoom, bgBathroom, bgLobby, bgLobbyBack, bgBooth, bgBoothAngry;
 static Texture2D bgNeutralEnding, bgHappyEnding, bgBadEnding;
 static Texture2D bgL1Diner, bgL1Booth, bgL1Her, bgL1DinerEmpty, bgL1Park, bgL1ParkEmpty, bgL1Hospital;
 static Texture2D bgL2Diner, bgL2Booth;
@@ -224,6 +224,8 @@ static void SetBackground(int id)
         case BG_OUTSIDE: currentBG = &bgOutside; break;
         case BG_INSIDE: currentBG = &bgInside; break;
         case BG_ROOM: currentBG = &bgRoom; break;
+        case BG_BOOTH: currentBG = &bgBooth; break;
+        case BG_BOOTH_ANGRY: currentBG = &bgBoothAngry; break;
         case BG_BATHROOM: currentBG = &bgBathroom; break;
         case BG_LOBBY: currentBG = &bgLobby; break;
         case BG_LOBBY_BACK: currentBG = &bgLobbyBack; break;
@@ -425,11 +427,13 @@ void EventsLoadResources(void)
     FileLoadTexture(&bgRoom, ASSET_BG "room.jpg");
     FileLoadTexture(&bgBathroom, ASSET_BG "bathroom.png");
     FileLoadTexture(&bgLobby, ASSET_BG "charWithColleges.png");
-    FileLoadTexture(&bgLobbyBack, "assets/background/BackOfFriends.png");
+    FileLoadTexture(&bgLobbyBack, ASSET_BG "BackOfFriends.png");
+    FileLoadTexture(&bgBooth, ASSET_BG "she_in_booth.jpg");
+    FileLoadTexture(&bgBoothAngry, ASSET_BG "her_booth_angry.jpg");
 
     FileLoadTexture(&bgNeutralEnding, ASSET_BG "NeutralEnding.png");
     FileLoadTexture(&bgHappyEnding, ASSET_BG "HappyEnding.png");
-    FileLoadTexture(&bgBadEnding, ASSET_BG "sad_ending.jpg");   
+    FileLoadTexture(&bgBadEnding, ASSET_BG "sad_ending.png");   
 
     FileLoadTexture(&bgL1Diner, ASSET_BG "Diner.png");
     FileLoadTexture(&bgL1Booth, ASSET_BG "Diner.png");

@@ -233,7 +233,7 @@ const int ELEVATOR_INTRO_TEMPLATE_COUNT = ARRAY_COUNT(ELEVATOR_INTRO_TEMPLATE);
 
 const DialogNode LEVEL1_TEMPLATE[] =
 {
-/* =========================
+    /* =========================
        SCENE 0 – ELEVATOR
        ========================= */
 
@@ -247,37 +247,37 @@ const DialogNode LEVEL1_TEMPLATE[] =
        ========================= */
 
     { "Narration", "Warm light floods the cold elevator, the familiar aroma of food and vanilla fill the air, replacing the staleness of the elevator with the smell of a well-known comfort.", EVENT_PLAY_SOUND, BG_NONE, AVATAR_NONE, SOUND_TALKING, INSPECT_NONE, 0, {}, 5 },
-    { "Narration", "Friends laugh. Couples chat. Families eat.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 6 },
+    { "Narration", "Friends laugh. Couples chat. Families eat.", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_NEUTRAL, SOUND_NONE, INSPECT_NONE, 0, {}, 6 },
     { "You", "What is this place?", EVENT_PLAY_SOUND, BG_NONE, AVATAR_NONE, SOUND_ELEVATOR, INSPECT_NONE, 0, {}, 7 },
-    { "Narration", "Welcome to your memories, Daniel.", EVENT_AVATAR_HIDE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 8 },
-    { "Narration", "A voice inserts itself into the crevices of your brain, as if it's your own very thoughts talking right to you.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 9 },
+    { "Narration", "Welcome to your memories, Daniel.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 8 },
+    { "Narration", "A voice inserts itself into the crevices of your brain, as if it's your own very thoughts talking right to you.", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_NEUTRAL, SOUND_NONE, INSPECT_NONE, 0, {}, 9 },
     { "Narration", "You spin in confusion. There is no one there.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 10 },
-    { "You", "...Okay, that's not unsettling at all.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 11 },
+    { "You", "...Okay, that's not unsettling at all.", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_NEUTRAL, SOUND_NONE, INSPECT_NONE, 0, {}, 11 },
     { "You", "Hello? Anyone there? If this is a prank, it's not very funny.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 12 },
-    { "Narration", "The sounds of the diner dampen, as if it's lowering its voice for someone else to speak...", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 13 },
-    { "You", "Who are you?! What is this place…?", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 14 },
+    { "Narration", "The sounds of the diner dampen, as if it's lowering its voice for someone else to speak...", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_NEUTRAL, SOUND_NONE, INSPECT_NONE, 0, {}, 13 },
+    { "You", "Who are you?! What is this place..?", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 14 },
     { "Narration", "This is something you buried deep within. A memory you refused to remember.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 15 },
     { "Narration", "You will face the memories you have run away from.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 16 },
     { "Narration", "You cannot change your past.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 17 },
     { "Narration", "But you can change your future.", EVENT_PLAY_SOUND, BG_NONE, AVATAR_NONE, SOUND_TALKING, INSPECT_NONE, 0, {}, 18 },
-    { "Narration", "Suddenly, you feel an eerie presence slip through the base of your skull.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 19 },
-    { "Narration", "The sounds of the diner rush back, covering you in a blanket of warmth and comfort.", EVENT_CHANGE_BACKGROUND | EVENT_FADE_IN, BG_L1_DINER_BOOTH, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 20 },
+    { "Narration", "Suddenly, you feel an eerie presence slip through the base of your skull.",  EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 19 },
+    { "Narration", "The sounds of the diner rush back, covering you in a blanket of warmth and comfort.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 20 },
     { "Narration", "Suddenly a wave of realization crashes over you, unlocking memories buried deep below.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 21 },
-    { "Narration", "This is where I met her.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 22 },
-    { "You", "I remember that day.", EVENT_SHOW_CARD, BG_NONE, AVATAR_NONE, SOUND_NONE, CARD_L1_DAY, 0, {}, 23 },
-    { "You", "My entire life was so draining.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 24 },
-    { "You", "All of everything, all at once.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 25 },
-    { "You", "Everywhere, day-in, day-out.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 26 },
-    { "You", "I thought I needed to do this, that these were for attaining my aspirations and my ambitions.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 27 },
-    { "You", "You know with all of my smartness, I thought that I had everything figured out.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 28 },
+    { "Narration", "This is where I met her.", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_NEUTRAL, SOUND_NONE, INSPECT_NONE, 0, {}, 22 },
+    { "You", "I remember that day.", EVENT_SHOW_CARD | EVENT_AVATAR_SHOW, BG_NONE, AVATAR_NEUTRAL, SOUND_NONE, CARD_L1_DAY, 0, {}, 23 },
+    { "You", "My entire life was so draining.", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_NEUTRAL, SOUND_NONE, INSPECT_NONE, 0, {}, 24 },
+    { "You", "All of everything, all at once.", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_NEUTRAL, SOUND_NONE, INSPECT_NONE, 0, {}, 25 },
+    { "You", "Everywhere, day-in, day-out.", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_NEUTRAL, SOUND_NONE, INSPECT_NONE, 0, {}, 26 },
+    { "You", "I thought I needed to do this, that these were for attaining my aspirations and my ambitions.", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_NEUTRAL, SOUND_NONE, INSPECT_NONE, 0, {}, 27 },
+    { "You", "You know with all of my smartness, I thought that I had everything figured out.", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_NEUTRAL, SOUND_NONE, INSPECT_NONE, 0, {}, 28 },
     { "You", "I really didn't.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 29 },
-    { "Narration", "Then, a voice behind you.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 30 },
-    { "Her", "Is this seat taken?", EVENT_PLAY_SOUND, BG_NONE, AVATAR_GIRL_HAPPY, SOUND_ELEVATOR_DING, INSPECT_NONE, 0, {}, 31 },
+    { "Narration", "Then, a voice behind you.", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_GIRL_HAPPY, SOUND_NONE, INSPECT_NONE, 0, {}, 30 },
+    { "Her", "Is this seat taken?", EVENT_PLAY_SOUND, BG_NONE, AVATAR_NONE, SOUND_ELEVATOR_DING, INSPECT_NONE, 0, {}, 31 },
     { "Narration", "You freeze, and slowly turn around.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 32 },
     { "Narration", "She stands there. Simple. Colorful. Beautiful.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 33 },
-    { "Narration", "A polka-dot dress. Bright blue eyes. And a soft, effortless smile.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 34 },
+    { "Narration", "A polka-dot dress. Bright blue eyes. And a soft, effortless smile.", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_NEUTRAL, SOUND_NONE, INSPECT_NONE, 0, {}, 34 },
 
-    { "You", "...", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 2,
+    { "You", "...", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_GIRL_HAPPY, SOUND_NONE, INSPECT_NONE, 2,
       {
           {"No, not at all.", 35},
           {"Only if you don't mind terrible company.", 38}
@@ -285,15 +285,14 @@ const DialogNode LEVEL1_TEMPLATE[] =
 
     /* first choice branch */
     { "Her", "Good.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 36 },
-    { "Her", "Because I hate sitting alone.", EVENT_CHANGE_BACKGROUND | EVENT_FADE_IN, BG_L1_DINER_BOOTH, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 37 },
+    { "Her", "Because I hate sitting alone.", EVENT_FADE_IN | EVENT_AVATAR_SHOW, BG_NONE, AVATAR_NEUTRAL, SOUND_NONE, INSPECT_NONE, 0, {}, 37 },
     { "You", "Good to know I passed the test.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 40 },
 
     /* second choice branch */
-    { "Her", "Well fortunately for me, it seems like you're juuuust not-terrible enough for me, which is good enough in my book!", EVENT_CHANGE_BACKGROUND | EVENT_FADE_IN, BG_L1_DINER_BOOTH, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 39 },
-    { "You", "Wow. Setting the bar high, I see.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 40 },
+    { "Her", "Well fortunately for me, it seems like you're juuuust not-terrible enough for me, which is good enough in my book!", EVENT_AVATAR_HIDE | EVENT_FADE_IN | EVENT_AVATAR_SHOW, BG_NONE, AVATAR_NEUTRAL, SOUND_NONE, INSPECT_NONE, 0, {}, 39 },
+    { "You", "Wow. Setting the bar high, I see.", EVENT_CHANGE_BACKGROUND, BG_BOOTH, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 40 },
 
-    /* merge */
-    { "Narration", "She softly chuckles to herself and takes her seat on the opposite end.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 41 },
+    { "Narration", "She softly chuckles to herself and takes her seat on the opposite end.", EVENT_AVATAR_HIDE | EVENT_CHANGE_BACKGROUND, BG_BOOTH, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 41 },
     { "Her", "Well! What brings such a fine company here?", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 42 },
     { "Narration", "She makes a sly wink.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 43 },
 
@@ -324,62 +323,61 @@ const DialogNode LEVEL1_TEMPLATE[] =
     /* after both responses */
     { "Narration", "And just like that—", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 59 },
     { "Narration", "something shifts.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 60 },
-    { "Narration", "You feel like in that one moment, with her smile that felt like it illuminated your whole world, that everything stood still just for her, and all the worries, burdens, and responsibilities all seemed to just…", EVENT_SHOW_CARD, BG_NONE, AVATAR_NONE, SOUND_NONE, CARD_L1_MELT, 0, {}, 61 },
+    { "Narration", "You feel like in that one moment, with her smile that felt like it illuminated your whole world, that everything stood still just for her, and all the worries, burdens, and responsibilities all seemed to just...", EVENT_SHOW_CARD, BG_NONE, AVATAR_NONE, SOUND_NONE, CARD_L1_MELT, 0, {}, 61 },
     { "Her", "Well? Are you gonna order or?", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 62 },
     { "Narration", "You suddenly are reminded why you came here in the first place,", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 63 },
     { "Narration", "to grab some food.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 64 },
     { "You", "Ah! Right then, let's see here...", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 65 },
     { "Narration", "You glance at several options.", EVENT_INSPECT_START | EVENT_STOP_SOUNDS, BG_NONE, AVATAR_NONE, SOUND_TALKING, INSPECT_L1_DINER_MENU, 0, {}, 66 },
-
-    { "Narration", "Suddenly, the whole diner becomes quiet.", EVENT_CHANGE_BACKGROUND | EVENT_FADE_IN | EVENT_PLAY_SOUND | EVENT_AVATAR_HIDE, BG_L1_DINER_EMPTY, AVATAR_NONE, SOUND_ELEVATOR_SCARY, INSPECT_NONE, 0, {}, 67 },
-    { "Narration", "The lights are turned off.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 68 },
+    { "Narration", "Suddenly, the whole diner becomes quiet.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 67 },
+    { "Narration", "The lights are turned off.", EVENT_CHANGE_BACKGROUND | EVENT_FADE_IN | EVENT_PLAY_SOUND | EVENT_AVATAR_HIDE, BG_L1_DINER_EMPTY, AVATAR_NONE, SOUND_ELEVATOR_SCARY, INSPECT_NONE, 0, {}, 68 },
     { "Narration", "The chairs are on the tables.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 69 },
     { "Narration", "She is no longer there anymore.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 70 },
     { "Narration", "Beginnings are easy to remember.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 71 },
-    { "Narration", "Endings are harder.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 72 },
-    { "Narration", "The diner lights flicker.", EVENT_CHANGE_BACKGROUND | EVENT_FADE_IN | EVENT_PLAY_SOUND, BG_L1_PARK, AVATAR_NONE, SOUND_PARK, INSPECT_NONE, 0, {}, 73 },
+    { "Narration", "Endings are harder.", EVENT_CHANGE_BACKGROUND | EVENT_FADE_IN | EVENT_PLAY_SOUND | EVENT_AVATAR_HIDE, BG_L1_PARK, AVATAR_NONE, SOUND_PARK, INSPECT_NONE, 0, {}, 72 },
 
     /* =========================
        SCENE 2 – PARK
        ========================= */
 
+    { "Narration", "The diner lights flicker.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 73 },
     { "Narration", "You step onto a modest, grassy hill overlooking the great city beyond.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 74 },
     { "Narration", "The afternoon sky glows in shades of gold and pink, layering the world in a blanket of comforting warmth, and enveloping you in its warm light.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 75 },
-    { "Narration", "Songbirds chirp softly, and the faint sounds of cars, traffic, and urban life are drowned out by the birds’ beautiful song.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 76 },
+    { "Narration", "Songbirds chirp softly, and the faint sounds of cars, traffic, and urban life are drowned out by the birds' beautiful song.", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_NEUTRAL, SOUND_NONE, INSPECT_NONE, 0, {}, 76 },
     { "You", "...Our favorite place.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 77 },
     { "Narration", "Footsteps approach.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 78 },
     { "Narration", "Then, she appears.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 79 },
-    { "Narration", "She carries a picnic basket, smiling the same effortless smile.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 80 },
-    { "Her", "So...", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 81 },
-    { "Her", "Are you going to join me?", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 82 },
-    { "You", "...I was waiting for a formal invitation.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 83 },
+    { "Narration", "She carries a picnic basket, smiling the same effortless smile.", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_GIRL_HAPPY, SOUND_NONE, INSPECT_NONE, 0, {}, 80 },
+    { "Her", "So...", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_GIRL_HAPPY, SOUND_NONE, INSPECT_NONE, 0, {}, 81 },
+    { "Her", "Are you going to join me?", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_NEUTRAL, SOUND_NONE, INSPECT_NONE, 0, {}, 82 },
+    { "You", "...I was waiting for a formal invitation.", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_GIRL_HAPPY, SOUND_NONE, INSPECT_NONE, 0, {}, 83 },
     { "Her", "Oh, my bad.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 84 },
     { "Narration", "She clears her throat dramatically….", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 85 },
-    { "Narration", "...and lets out the most horrendous British accent that could ever exist.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 86 },
+    { "Narration", "...and lets out the most horrendous British accent that could ever exist.", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_GIRL_HAPPY, SOUND_NONE, INSPECT_NONE, 0, {}, 86 },
     { "Her", "Dear sir, would you kindly join me for this absolutely gourmet dining experience?", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 87 },
-    { "Narration", "You laugh and cringe all at the same time, feeling the entirety of the second-hand embarrassment from that gesture.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 88 },
+    { "Narration", "You laugh and cringe all at the same time, feeling the entirety of the second-hand embarrassment from that gesture.", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_NEUTRAL, SOUND_NONE, INSPECT_NONE, 0, {}, 88 },
     { "You", "Now that sounds convincing.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 89 },
     { "Narration", "You walk toward her, gently taking her hand and sit together on the bench.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 90 },
     { "Narration", "It feels as though there is nothing else outside of this bench,", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 91 },
     { "Narration", "and you,", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 92 },
-    { "Narration", "and her.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 93 },
+    { "Narration", "and her.", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_GIRL_HAPPY, SOUND_NONE, INSPECT_NONE, 0, {}, 93 },
     { "Her", "Look, I brought some things! Come and grab some!", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 94 },
-    { "Narration", "She opens the picnic basket.", EVENT_INSPECT_START, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_L1_PARK_BASKET, 0, {}, 95 },
+    { "Narration", "She opens the picnic basket.", EVENT_INSPECT_START | EVENT_AVATAR_SHOW, BG_NONE, AVATAR_GIRL_HAPPY, SOUND_NONE, INSPECT_L1_PARK_BASKET, 0, {}, 95 },
 
-    { "Her", "You know why I love sunsets?", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 96 },
+    { "Her", "You know why I love sunsets?", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_NEUTRAL, SOUND_NONE, INSPECT_NONE, 0, {}, 96 },
     { "You", "Because you're secretly a hopeless romantic?", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 97 },
-    { "Narration", "She laughs softly.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 98 },
+    { "Narration", "She laughs softly.", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_GIRL_HAPPY, SOUND_NONE, INSPECT_NONE, 0, {}, 98 },
     { "Her", "No. Far from it actually.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 99 },
-    { "Narration", "She looks towards the horizon.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 100 },
+    { "Narration", "She looks towards the horizon.", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_GIRL_HAPPY, SOUND_NONE, INSPECT_NONE, 0, {}, 100 },
     { "Her", "Because they remind me that everything, even endings, can be beautiful.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 101 },
-    { "Narration", "She gestures toward the sky.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 102 },
-    { "Her", "We get so caught up in attaching meaning to everything...", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 103 },
-    { "Her", "To strive towards something...", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 104 },
-    { "Her", "And once we 'have it', we go on to the next thing...", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 105 },
+    { "Narration", "She gestures toward the sky.", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_GIRL_HAPPY, SOUND_NONE, INSPECT_NONE, 0, {}, 102 },
+    { "Her", "We get so caught up in attaching meaning to everything...", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_GIRL_HAPPY, SOUND_NONE, INSPECT_NONE, 0, {}, 103 },
+    { "Her", "To strive towards something...", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_GIRL_HAPPY, SOUND_NONE, INSPECT_NONE, 0, {}, 104 },
+    { "Her", "And once we 'have it', we go on to the next thing...", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_GIRL_HAPPY, SOUND_NONE, INSPECT_NONE, 0, {}, 105 },
     { "Her", "And the next thing...", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 106 },
-    { "Narration", "A pause.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 107 },
+    { "Narration", "A pause.", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_GIRL_HAPPY, SOUND_NONE, INSPECT_NONE, 0, {}, 107 },
 
-    { "Her", "Don't you think it's all... a bit useless sometimes?", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 2,
+    { "Her", "Don't you think it's all... a bit useless sometimes?", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_GIRL_HAPPY, SOUND_NONE, INSPECT_NONE, 2,
       {
           {"Yeah, it kinda is, isn't that why it kinda sucks?", 108},
           {"Not at all, how could that be?", 114}
@@ -387,33 +385,33 @@ const DialogNode LEVEL1_TEMPLATE[] =
 
     /* philosophy response A */
     { "Her", "I wouldn't say so at all, It means that you are free to do anything you want.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 109 },
-    { "Narration", "She reaches a hand towards the twilight sky, her eyes sparkling as bright as the stars above.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 110 },
-    { "Her", "It means that you are free to cry and laugh, to fail and succeed, to fall down and get up, over and over and over again.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 111 },
-    { "Her", "It means that you are free to find your own meaning, your own destiny.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 112 },
-    { "Her", "And that nothing, nothing, can ever take that away from you.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 113 },
+    { "Narration", "She reaches a hand towards the twilight sky, her eyes sparkling as bright as the stars above.", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_GIRL_HAPPY, SOUND_NONE, INSPECT_NONE, 0, {}, 110 },
+    { "Her", "It means that you are free to cry and laugh, to fail and succeed, to fall down and get up, over and over and over again.", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_GIRL_HAPPY, SOUND_NONE, INSPECT_NONE, 0, {}, 111 },
+    { "Her", "It means that you are free to find your own meaning, your own destiny.", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_GIRL_HAPPY, SOUND_NONE, INSPECT_NONE, 0, {}, 112 },
+    { "Her", "And that nothing, nothing, can ever take that away from you.", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_GIRL_HAPPY, SOUND_NONE, INSPECT_NONE, 0, {}, 113 },
     { "Her", "And I find that truly beautiful.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 123 },
 
     /* philosophy response B */
-    { "Her", "Sure! And if you really believe so, all the more power to you!", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 115 },
-    { "Her", "That means that those things are your meaning.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 116 },
+    { "Her", "Sure! And if you really believe so, all the more power to you!", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_GIRL_HAPPY, SOUND_NONE, INSPECT_NONE, 0, {}, 115 },
+    { "Her", "That means that those things are your meaning.", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_GIRL_HAPPY, SOUND_NONE, INSPECT_NONE, 0, {}, 116 },
     { "Her", "My meaning is different though, and I don't think it's any less meaningful than your hopes and dreams.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 117 },
-    { "Narration", "She gazes out at the horizon, her eyes glowing warmer than the evening sun.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 118 },
-    { "Her", "... I like the little things,", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 119 },
-    { "Her", "a well-made cheese sandwich, with a bottle of good lemonade, and just...", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 120 },
+    { "Narration", "She gazes out at the horizon, her eyes glowing warmer than the evening sun.", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_GIRL_HAPPY, SOUND_NONE, INSPECT_NONE, 0, {}, 118 },
+    { "Her", "... I like the little things,", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_GIRL_HAPPY, SOUND_NONE, INSPECT_NONE, 0, {}, 119 },
+    { "Her", "a well-made cheese sandwich, with a bottle of good lemonade, and just...", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_GIRL_HAPPY, SOUND_NONE, INSPECT_NONE, 0, {}, 120 },
     { "Her", "Just watching the sun go down with someone special.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 121 },
-    { "Narration", "She turns towards you, with a simple yet heartwarming smile.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 122 },
+    { "Narration", "She turns towards you, with a simple yet heartwarming smile.", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_GIRL_HAPPY, SOUND_NONE, INSPECT_NONE, 0, {}, 122 },
     { "Her", "I think that's what makes life beautiful.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 123 },
 
     /* merge */
     { "Her", "Ah well, that's just me yapping though!", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 124 },
     { "Narration", "You also gaze up at the stars.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 125 },
     { "Narration", "They truly are beautiful this evening.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 126 },
-    { "Narration", "You look back down and smirk slightly.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 127 },
+    { "Narration", "You look back down and smirk slightly.", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_NEUTRAL, SOUND_NONE, INSPECT_NONE, 0, {}, 127 },
     { "You", "Mhmm, mhmmm thank you professor for this wonderful lecture, when can we hear from you again madam?", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 128 },
-    { "Narration", "She makes a slight grin.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 129 },
+    { "Narration", "She makes a slight grin.", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_GIRL_HAPPY, SOUND_NONE, INSPECT_NONE, 0, {}, 129 },
     { "Her", "Oh shut up! In that case, I'll be failing you right here, right now just for your disrespect!", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 130 },
-    { "Narration", "You both laugh into the evening sky.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 131 },
-    { "Her", "Anyways, to summarize, sometimes...", EVENT_NONE | EVENT_STOP_SOUNDS, BG_NONE, AVATAR_NONE, SOUND_PARK, INSPECT_NONE, 0, {}, 132 },
+    { "Narration", "You both laugh into the evening sky.", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_GIRL_HAPPY, SOUND_NONE, INSPECT_NONE, 0, {}, 131 },
+    { "Her", "Anyways, to summarize, sometimes...", EVENT_STOP_SOUNDS, BG_NONE, AVATAR_NONE, SOUND_PARK, INSPECT_NONE, 0, {}, 132 },
     { "Narration", "I feel like it's best to just...", EVENT_SHOW_CARD | EVENT_PLAY_SOUND, BG_NONE, AVATAR_NONE, SOUND_ELEVATOR_SCARY, CARD_L1_SLOW, 0, {}, 133 },
 
     { "Narration", "She is gone.", EVENT_CHANGE_BACKGROUND | EVENT_FADE_IN | EVENT_AVATAR_HIDE, BG_L1_PARK_EMPTY, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 134 },
@@ -421,13 +419,13 @@ const DialogNode LEVEL1_TEMPLATE[] =
     { "Narration", "The sunset fades away.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 136 },
     { "Narration", "The only thing you have now is that same crumpled letter in your hand.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 137 },
     { "Narration", "And it all clicks in your head.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 138 },
-    { "Narration", "And you shudder at the realization of what it means.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 139 },
+    { "Narration", "And you shudder at the realization of what it means.", EVENT_AVATAR_SHOW, BG_NONE, AVATAR_NEUTRAL, SOUND_NONE, INSPECT_NONE, 0, {}, 139 },
     { "You", "It, just, can't be...", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 140 },
     { "Narration", "A wave of thoughts and memories come crashing down you.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 141 },
     { "Narration", "It almost overwhelming you with its information.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 142 },
     { "Narration", "But now you know what happened.", EVENT_SHOW_CARD, BG_NONE, AVATAR_NONE, SOUND_NONE, CARD_L1_LETTER, 0, {}, 143 },
-    { "Narration", "Suddenly you feel that same presence, bury itself in your head.", EVENT_AVATAR_HIDE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 144 },
-    { "Narration", "Now you remember how the story ends.", EVENT_NONE | EVENT_STOP_SOUNDS, BG_NONE, AVATAR_NONE, SOUND_ELEVATOR_SCARY, INSPECT_NONE, 0, {}, 145 },
+    { "Narration", "Suddenly you feel that same presence, bury itself in your head.", EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, 144 },
+    { "Narration", "Now you remember how the story ends.", EVENT_STOP_SOUNDS, BG_NONE, AVATAR_NONE, SOUND_ELEVATOR_SCARY, INSPECT_NONE, 0, {}, 145 },
     { "Narration", "Remember now why it ended.", EVENT_EYES_CLOSE | EVENT_DIALOG_HIDE | EVENT_AVATAR_HIDE | EVENT_GO_LEVEL2, BG_NONE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE, 0, {}, -1 }
 };
 const int LEVEL1_TEMPLATE_COUNT = ARRAY_COUNT(LEVEL1_TEMPLATE);
@@ -460,11 +458,11 @@ const DialogNode LEVEL2_TEMPLATE[] =
        ========================= */
 
     { "You", "Oh, I'm here again?",
-      EVENT_PLAY_SOUND, BG_NONE, AVATAR_NONE, SOUND_TALKING,
+      EVENT_PLAY_SOUND | EVENT_AVATAR_SHOW, BG_NONE, AVATAR_NEUTRAL, SOUND_TALKING,
       INSPECT_NONE, 0, {}, 6 },
 
     { "Narration", "Same familiar aroma, same calm lighting, same ambience.",
-      EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE,
+      EVENT_AVATAR_HIDE, BG_NONE, AVATAR_NONE, SOUND_NONE,
       INSPECT_NONE, 0, {}, 7 },
 
     { "Narration", "It all should be calm and familiar to you, but still something feels awfully wrong...",
@@ -476,7 +474,7 @@ const DialogNode LEVEL2_TEMPLATE[] =
       INSPECT_NONE, 0, {}, 9 },
 
     { "Her", "Is this seat taken?",
-      EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE,
+      EVENT_AVATAR_SHOW, BG_NONE, AVATAR_GIRL_HAPPY, SOUND_NONE,
       INSPECT_NONE, 0, {}, 10 },
 
     { "Narration", "You turn around and smile gently at her.",
@@ -488,18 +486,18 @@ const DialogNode LEVEL2_TEMPLATE[] =
       INSPECT_NONE, 0, {}, 12 },
 
     { "Narration", "For some reason this whole moment feels so wrong.",
-      EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE,
+      EVENT_AVATAR_HIDE, BG_NONE, AVATAR_NONE, SOUND_NONE,
       INSPECT_NONE, 0, {}, 13 },
 
     { "Narration", "She then takes her seat.",
-      EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE,
+      EVENT_CHANGE_BACKGROUND, BG_BOOTH, AVATAR_NONE, SOUND_NONE,
       INSPECT_NONE, 0, {}, 14 },
 
     { "Narration", "Give crumpled letter.",
       EVENT_INSPECT_START, BG_NONE, AVATAR_NONE, SOUND_NONE,
       INSPECT_L2_LETTER, 0, {}, 15 },
 
-    { "Narration", "And now she reads",
+    { "Narration", "And now she reads the words...",
       EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE,
       INSPECT_NONE, 0, {}, 16 },
 
@@ -512,7 +510,7 @@ const DialogNode LEVEL2_TEMPLATE[] =
       INSPECT_NONE, 0, {}, 18 },
 
     { "Narration", "Looking for any signs of approval or happiness or joy...",
-      EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE,
+      EVENT_CHANGE_BACKGROUND, BG_BOOTH_ANGRY, AVATAR_NONE, SOUND_NONE,
       INSPECT_NONE, 0, {}, 19 },
 
     { "Narration", "But instead that once simple smile melts away...",
@@ -722,7 +720,7 @@ const DialogNode LEVEL2_TEMPLATE[] =
       INSPECT_NONE, 0, {}, 65 },
 
     { "Narration", "She manages a slight but soft smile.",
-      EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE,
+      EVENT_CHANGE_BACKGROUND, BG_BOOTH, AVATAR_NONE, SOUND_NONE,
       INSPECT_NONE, 0, {}, 66 },
 
     { "Her", "We had a good thing, and I'm glad we did this.",
@@ -752,7 +750,7 @@ const DialogNode LEVEL2_TEMPLATE[] =
       INSPECT_NONE, 0, {}, 72 },
 
     { "Narration", "She smiles a little.",
-      EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE,
+      EVENT_CHANGE_BACKGROUND, BG_BOOTH, AVATAR_NONE, SOUND_NONE,
       INSPECT_NONE, 0, {}, 73 },
 
     { "Her", "And you were one of the most special people in my life.",
@@ -886,7 +884,7 @@ const DialogNode LEVEL2_TEMPLATE[] =
       INSPECT_NONE, 0, {}, 102 },
 
     { "Narration", "She smiles back softly.",
-      EVENT_NONE, BG_NONE, AVATAR_NONE, SOUND_NONE,
+      EVENT_CHANGE_BACKGROUND, BG_BOOTH, AVATAR_NONE, SOUND_NONE,
       INSPECT_NONE, 0, {}, 103 },
 
     { "Her", "Thank you too.",

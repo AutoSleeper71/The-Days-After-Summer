@@ -132,27 +132,29 @@ static void LoadAssets(void)
 {
     if (loaded) return;
 
-    if (!musicLoaded && FileExists("assets/battle.mp3"))
+    if (!musicLoaded && FileExists("assets/audio/battle.mp3"))
     {
-        battleMusic = LoadMusicStream("assets/battle.mp3");
+        battleMusic = LoadMusicStream("assets/audio/battle.mp3");
         musicLoaded = true;
     }
 
-    bg = SafeLoad("assets/EmptyDiner.png");
-    if (!bg.id) bg = SafeLoad("assets/Diner.png");
+    bg = SafeLoad("assets/background/EmptyDiner.png");
+    if (!bg.id) bg = SafeLoad("assets/background/Diner.png");
 
-    playerNeutral = SafeLoad("assets/Neutral.png");
-    if (!playerNeutral.id) playerNeutral = SafeLoad("assets/character.png");
+    playerNeutral = SafeLoad("assets/avatar/character.png");
+    if (!playerNeutral.id) playerNeutral = SafeLoad("assets/avatar/Neutral.png");
 
-    playerSad = SafeLoad("assets/Sad.png");
+    playerSad = SafeLoad("assets/avatar/HappyMan.png");
+    if (!playerSad.id) playerSad = SafeLoad("assets/avatar/Sad.png");
     if (!playerSad.id) playerSad = playerNeutral;
 
     const char *devilCandidates[] = {
-        "assets/Character_demon.png",
-        "assets/Character_devil.png",
-        "assets/Devil.png",
-        "assets/devil.png",
-        "assets/DevilCharacter.png"
+        "assets/avatar/Character_demon.png",
+        "assets/avatar/Character_devil.png",
+        "assets/avatar/Devil.png",
+        "assets/avatar/devil.png",
+        "assets/avatar/DevilCharacter.png",
+        "assets/avatar/Disapointed.png"
     };
 
     enemyDevil = LoadFirstExisting(devilCandidates, (int)(sizeof(devilCandidates) / sizeof(devilCandidates[0])));
@@ -716,16 +718,15 @@ GameState UpdateLevel3(void)
     UpdateBattle();
 
     if (IsKeyPressed(KEY_ENTER))
-    {
-        if (battle.playerWon)
-            angerBad++;
-        else
-            angerBad = 0;
+{
+    if (battle.playerWon)
+        angerBad++;
+    else
+        angerBad = 0;
 
-        nextLevel = LEVEL4;
-        initialized = false;
-        return ELEVATOR;
-    }
+    initialized = false;
+    return LEVEL4;
+}
 
     return LEVEL3;
 }

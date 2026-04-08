@@ -50,6 +50,8 @@ typedef enum
     BG_HAPPY_ENDING,
     BG_BAD_ENDING,
     BG_LOBBY_BACK,
+    BG_BOOTH,
+    BG_BOOTH_ANGRY,
 
     BG_L1_DINER,
     BG_L1_DINER_BOOTH,

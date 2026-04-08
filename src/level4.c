@@ -260,9 +260,8 @@ GameState UpdateLevel4(void)
             else if (score == 2) depressionBad += 1;
 
             finalEnding = EvaluateEnding();
-            nextLevel = finalEnding;
             initialized = false;
-            return ELEVATOR;
+            return finalEnding;
         }
 
         return LEVEL4;
