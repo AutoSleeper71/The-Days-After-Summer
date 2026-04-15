@@ -719,11 +719,7 @@ GameState UpdateLevel3(void)
 
     if (IsKeyPressed(KEY_ENTER))
 {
-    if (battle.playerWon)
-        angerBad++;
-    else
-        angerBad = 0;
-
+    angerBad = battle.playerWon ? 1 : 0;
     initialized = false;
     return LEVEL4;
 }

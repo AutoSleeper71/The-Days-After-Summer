@@ -16,7 +16,7 @@ int screenHeight = 1080;
 
 int main(void)
 {
-    InitWindow(GetMonitorWidth(0), GetMonitorHeight(0), "500 Days of Summer");
+    InitWindow(GetMonitorWidth(1920), GetMonitorHeight(1080), "500 Days of Summer");
     SetWindowState(FLAG_FULLSCREEN_MODE);
     SetExitKey(KEY_NULL);
 

@@ -91,7 +91,8 @@ typedef enum
     SOUND_PARK,
     SOUND_CALL,
     SOUND_GOOD_END,
-    SOUND_NEUT_END
+    SOUND_NEUT_END,
+    SOUND_DINERSONG,
 } EventSound;
 
 /* Overlay/inspect IDs used by special interactive dialogue nodes. */

@@ -48,7 +48,7 @@ static Texture2D bgL2Diner, bgL2Booth;
 static Texture2D avatarNeutral, avatarConfused, avatarSad, avatarGirlHappy, avatarGirlDisappointed;
 static Texture2D imgMirror, imgToothbrush, imgDuck;
 static Sound sndMirror, sndToothbrush, sndDuck;
-static Sound sndDing, sndRumble, sndScary, sndElevator, sndLight, sndTalking, sndPark, sndCall;
+static Sound sndDing, sndRumble, sndScary, sndElevator, sndLight, sndTalking, sndPark, sndCall, sndDinersong;
 static Sound sndGoodEnd, sndNeutEnd;
 static Texture2D imgSpaghetti, imgSteak, imgBurger, imgLetter;
 static Texture2D imgSandwich, imgLemonade;
@@ -99,7 +99,7 @@ static const char *dinerDesc[] = {
     "The spaghetti here is really good, always cooked al-dente, but its portion sizes are tiny.",
     "Steak here is pretty decent, but that price is just a little too much for 'decent'",
     "A good burger with a very large size. The problem is I am wearing a white suit. Not the best option for someone liable to such a mess.",
-    "This shouldn't be here."
+    "What is this? A letter should not be here. . ."
 };
 
 static Texture2D *dinerImages[] = {
@@ -272,6 +272,7 @@ static void PlaySoundById(int id)
         case SOUND_ELEVATOR: if (sndElevator.frameCount) PlaySound(sndElevator); break;
         case SOUND_LIGHT: if (sndLight.frameCount) PlaySound(sndLight); break;
         case SOUND_TALKING: if (sndTalking.frameCount) PlaySound(sndTalking); break;
+        case SOUND_DINERSONG: if (sndDinersong.frameCount) PlaySound(sndDinersong); break;
         case SOUND_PARK: if (sndPark.frameCount) PlaySound(sndPark); break;
         case SOUND_CALL: if (sndCall.frameCount) PlaySound(sndCall); break;
         case SOUND_GOOD_END: if (sndGoodEnd.frameCount) PlaySound(sndGoodEnd); break;
@@ -292,6 +293,7 @@ static void StopAllSharedSounds(void)
     if (sndCall.frameCount) StopSound(sndCall);
     if (sndGoodEnd.frameCount) StopSound(sndGoodEnd);
     if (sndNeutEnd.frameCount) StopSound(sndNeutEnd);
+    if (sndDinersong.frameCount) StopSound(sndDinersong);
 }
 
 static bool AllChecked(const bool *values, int count)
@@ -385,7 +387,7 @@ static void HandleL2LetterSelect(void)
     currentInspectTexture = &imgLetter;
     OpenCustomMessage(
         "Crumpled Letter",
-        "The same letter that appeared from the place where you first met her, and your favorite place with her.\n\nThat same letter that was never supposed to be in those memories.\n\nInside reads a message that was too special to send by text, but a message that you could never say out loud.\n\nA message that made your throat dry and your heart race from the thought of saying the words.\n\nAnd so you wrote them down."
+        "The same letter that appeared from the place where you first met her, and your favorite place with her.\n\nThat same letter that was never supposed to be in those memories. \n\nInside reads a message that made your throat dry and your heart race from the thought of saying the words.\n\nAnd so you wrote them down."
     ); 
 }
 
@@ -470,6 +472,7 @@ void EventsLoadResources(void)
     FileLoadSound(&sndLight, ASSET_AUDIO "light.wav");
     FileLoadSound(&sndTalking, ASSET_AUDIO "talking.wav");
     FileLoadSound(&sndCall, ASSET_AUDIO "calling.mp3");
+    FileLoadSound(&sndDinersong, ASSET_AUDIO "dinersong.mp3");
     FileLoadSound(&sndGoodEnd, ASSET_AUDIO "goodending.mp3");
     FileLoadSound(&sndNeutEnd, ASSET_AUDIO "neutralending.mp3");
     sndRumble = sndDing;

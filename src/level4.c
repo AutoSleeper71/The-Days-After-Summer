@@ -65,15 +65,15 @@ static bool ValidateScript(const DialogNode *nodes, int count)
 
 static GameState EvaluateEnding(void)
 {
-    int total = angerBad + depressionBad;
+    int wins = angerBad + depressionBad;
 
-    if (total >= 3)
-        return ENDING_BAD;
+    if (wins >= 2)
+        return ENDING_GOOD;
 
-    if (total >= 1)
+    if (wins == 1)
         return ENDING_SLIGHTLY_BAD;
 
-    return ENDING_GOOD;
+    return ENDING_BAD;
 }
 
 // INIT
@@ -82,7 +82,7 @@ static void InitLevel4State(void)
 {
     waitingOnEvent = false;
     zumaInitialized = false;
-    state = LEVEL4_START;
+    state = LEVEL4_DIALOG;
 
     EventsInit();
     EventsTrigger(EVENT_CHANGE_BACKGROUND, BG_INSIDE, AVATAR_NONE, SOUND_NONE, INSPECT_NONE);
@@ -125,38 +125,6 @@ GameState UpdateLevel4(void)
     if (IsKeyPressed(KEY_ESCAPE) && !IsSettingsMenuOpen())
     {
         OpenPauseMenu();
-        return LEVEL4;
-    }
-
-    if (state == LEVEL4_START)
-    {
-        DrawText("LEVEL 4 - DEPRESSION", w/2 - 220, h/2 - 80, 40, WHITE);
-        DrawText("ENTER = try to fight this", w/2 - 120, h/2, 20, WHITE);
-        DrawText("SPACE = give up", w/2 - 120, h/2 + 40, 20, GRAY);
-
-        {
-            SettingsResult settings = UpdateAndDrawSettingsMenu();
-            if (settings == SETTINGS_RESULT_GO_TO_MENU)
-            {
-                SaveGameForState(LEVEL4);
-                return MENU;
-            }
-            if (settings == SETTINGS_RESULT_EXIT) return GAME_EXIT;
-            if (settings != SETTINGS_RESULT_NONE) return LEVEL4;
-        }
-
-        if (IsKeyPressed(KEY_SPACE))
-        {
-            depressionBad += 2;
-            finalEnding = EvaluateEnding();
-            nextLevel = finalEnding;
-            initialized = false;
-            return ELEVATOR;
-        }
-
-        if (IsKeyPressed(KEY_ENTER))
-            state = LEVEL4_DIALOG;
-
         return LEVEL4;
     }
 
@@ -240,7 +208,7 @@ GameState UpdateLevel4(void)
 
         UpdateMinigame();
         DrawMinigame();
-        DrawText("Clear the chain.", 20, h - 60, 24, LIGHTGRAY);
+        DrawText("Build each word by shooting letters into the circle.", 20, h - 60, 24, LIGHTGRAY);
 
         {
             SettingsResult settings = UpdateAndDrawSettingsMenu();
@@ -254,15 +222,13 @@ GameState UpdateLevel4(void)
         }
 
         if (ShouldExitMinigame())
-        {
-            int score = GetMinigameScore();
-            if (score <= 1) depressionBad += 2;
-            else if (score == 2) depressionBad += 1;
+{
+    depressionBad = IsMinigameWon() ? 1 : 0;
 
-            finalEnding = EvaluateEnding();
-            initialized = false;
-            return finalEnding;
-        }
+    finalEnding = EvaluateEnding();
+    initialized = false;
+    return finalEnding;
+}
 
         return LEVEL4;
     }
